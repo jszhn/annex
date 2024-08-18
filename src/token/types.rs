@@ -1,7 +1,3 @@
-pub enum CLiteral {
-    Integer
-}
-
 pub enum CType {
     Int,
     Char,
@@ -14,10 +10,14 @@ pub enum COperator {
     Divide,
 }
 
+#[derive(Clone, Copy)]
 pub enum CTokenType {
     Type,
-    Keyword,
+    Control,
+    Specifier,
     Operator,
-    Literal(CLiteral),
+    Literal,
     Separator,
+    GroupBegin,
+    GroupEnd,
 }
