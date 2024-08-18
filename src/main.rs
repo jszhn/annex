@@ -1,21 +1,25 @@
 use std::{env, fs};
-use std::error::Error;
 
 pub mod token;
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() {
     let args: Vec<String> = env::args().collect();
-    // let mut args: Vec<String> = env::args().collect();
-    // args.push(String::from("file.c"));
-
     if args.len() == 1 {
         eprintln!("ERR: Too few arguments! Please provide at minimum a file path: annex file.c");
         std::process::exit(1);
     }
 
     let file_path = &args[1];
-    let file_contents: String = fs::read_to_string(file_path)?;
+    let file_contents = get_file_contents(file_path);
     let token_vec = token::tokenise(file_contents);
+    token::io::print(&token_vec);
+}
 
-    Ok(())
+fn get_file_contents(path: &String) -> String {
+    let file_contents = fs::read_to_string(path);
+    return if let Ok(file_contents) = file_contents {
+        file_contents
+    } else {
+        "".to_string()
+    };
 }

@@ -16,8 +16,11 @@ pub enum CTokenType {
     Control,
     Specifier,
     Operator,
+    Identifier,
     Literal,
     Separator,
+    Return,
+    Boolean,
     GroupBegin,
     GroupEnd,
 }
