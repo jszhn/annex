@@ -1,26 +1,14 @@
-pub enum CType {
-    Int,
-    Char,
-}
-
-pub enum COperator {
-    Add,
-    Subtract,
-    Multiply,
-    Divide,
-}
-
 #[derive(Clone, Copy)]
 pub enum CTokenType {
     Type,
     Control,
     Specifier,
     Operator,
-    Identifier,
-    Literal,
+    Identifier, // catch-all for non keyword tokens
     Separator,
     Return,
     Boolean,
     GroupBegin,
     GroupEnd,
+    None,
 }

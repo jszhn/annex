@@ -8,7 +8,19 @@ pub struct CToken {
     value: String,
 }
 
+impl CToken {
+    fn new(tt: CTokenType, v: String) -> CToken {
+        CToken {
+            token_type: tt,
+            value: v,
+        }
+    }
+}
+
 pub fn tokenise(file: String) -> Vec<CToken> {
+    /*
+       Primary tokenisation interface, callable from outside modules.
+    */
     let chars = file.chars();
     let mut tokens: Vec<CToken> = Vec::new();
     let mut buf = String::new();
@@ -25,7 +37,7 @@ pub fn tokenise(file: String) -> Vec<CToken> {
             // handle single-char tokens first
             '(' | '{' | '[' => token_type = CTokenType::GroupBegin,
             ')' | '}' | ']' => token_type = CTokenType::GroupEnd,
-            ';' | ',' | '.' | ':' => token_type = CTokenType::Separator,
+            ';' | ',' | '.' | ':' | '#' => token_type = CTokenType::Separator,
             ' ' | '\t' | '\r' => {
                 if buf.len() != 0 && !comment {
                     // clear existing multichar tokens
@@ -46,7 +58,9 @@ pub fn tokenise(file: String) -> Vec<CToken> {
                     continue;
                 }
             }
-            '+' | '-' | '=' | '*' | '<' | '>' | '?' => token_type = CTokenType::Operator,
+            '+' | '-' | '=' | '*' | '<' | '>' | '?' | '|' | '&' => {
+                token_type = CTokenType::Operator
+            }
             '\n' => {
                 if comment {
                     // single-line comment
@@ -77,7 +91,10 @@ pub fn tokenise(file: String) -> Vec<CToken> {
             });
         }
     }
-    return tokens;
+    let combined_tokens = combine_compound(tokens);
+    let combined_tokens = combine_compound(combined_tokens); // 2nd pass for 3-char operators
+
+    return combined_tokens;
 }
 
 fn multichar_token(token: &String) -> CToken {
@@ -116,4 +133,36 @@ fn multichar_token_id(token: &String) -> CToken {
         token_type: CTokenType::Identifier,
         value: token.clone(),
     };
+}
+
+fn combine_compound(tokens: Vec<CToken>) -> Vec<CToken> {
+    /*
+       Combines multichar operator tokens.
+    */
+    let mut new_tokens: Vec<CToken> = vec![];
+
+    let mut iter = tokens.into_iter().peekable();
+    while let Some(curr) = iter.next() {
+        match curr.token_type {
+            CTokenType::Operator => {
+                // check for double char operators
+                if let Some(next) = iter.next() {
+                    match next.token_type {
+                        // check next token value
+                        CTokenType::Operator => {
+                            let mut new_val = curr.value.clone();
+                            new_val.push_str(next.value.clone().as_str());
+                            new_tokens.push(CToken::new(CTokenType::Operator, new_val));
+                        }
+                        _ => {
+                            new_tokens.push(curr);
+                            new_tokens.push(next)
+                        } // if next token isn't an operator, we push as normal
+                    }
+                }
+            }
+            _ => new_tokens.push(curr),
+        }
+    }
+    new_tokens
 }
