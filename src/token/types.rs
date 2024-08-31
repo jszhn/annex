@@ -1,5 +1,5 @@
-#[derive(Clone, Copy)]
-pub enum CTokenType {
+#[derive(Clone, Copy, PartialEq)]
+pub enum TokenType {
     Type,
     Control,
     Specifier,
@@ -11,4 +11,5 @@ pub enum CTokenType {
     GroupBegin,
     GroupEnd,
     None,
+    EOF,
 }

@@ -1,32 +1,66 @@
-use crate::token::types::CTokenType;
+use crate::token::types::TokenType;
 
 pub mod io;
 pub mod types;
 
-pub struct CToken {
-    token_type: CTokenType,
-    value: String,
+pub struct Lexer {
+    tokens: Vec<Token>,
 }
 
-impl CToken {
-    fn new(tt: CTokenType, v: String) -> CToken {
-        CToken {
-            token_type: tt,
-            value: v,
+impl Lexer {
+    pub fn new(file: String) -> Lexer {
+        Lexer {
+            tokens: tokenise(file),
+        }
+    }
+
+    pub fn consume(&mut self) -> Token {
+        self.tokens
+            .pop()
+            .unwrap_or(Token::new(TokenType::EOF, "".to_string()))
+    }
+
+    pub fn peek(&mut self) -> &Token {
+        self.tokens
+            .last()
+            .clone()
+            .unwrap_or(&Token::new(TokenType::EOF, "".to_string()))
+    }
+
+    pub fn get(&mut self) -> &Vec<Token> {
+        return &self.tokens;
+    }
+}
+
+pub struct Token {
+    pub(crate) token_type: TokenType,
+    pub(crate) value: Option<String>,
+}
+
+impl Token {
+    pub fn new(token_type: TokenType, value: String) -> Token {
+        Token {
+            token_type,
+            value: Some(value),
+        }
+    }
+
+    pub fn new_blank(token_type: TokenType) -> Token {
+        Token {
+            token_type,
+            value: None,
         }
     }
 }
 
-pub fn tokenise(file: String) -> Vec<CToken> {
-    /*
-       Primary tokenisation interface, callable from outside modules.
-    */
+fn tokenise(file: String) -> Vec<Token> {
+    // primary tokenisation interface
     let chars = file.chars();
-    let mut tokens: Vec<CToken> = Vec::new();
+    let mut tokens: Vec<Token> = Vec::new();
     let mut buf = String::new();
 
     // tracking variables
-    let mut token_type = CTokenType::Identifier;
+    let mut token_type = TokenType::Identifier;
     let mut comment = false; // used with div boolean
     let mut div = false; // checks division op versus single-line comment
 
@@ -35,9 +69,9 @@ pub fn tokenise(file: String) -> Vec<CToken> {
 
         match c {
             // handle single-char tokens first
-            '(' | '{' | '[' => token_type = CTokenType::GroupBegin,
-            ')' | '}' | ']' => token_type = CTokenType::GroupEnd,
-            ';' | ',' | '.' | ':' | '#' => token_type = CTokenType::Separator,
+            '(' | '{' | '[' => token_type = TokenType::GroupBegin,
+            ')' | '}' | ']' => token_type = TokenType::GroupEnd,
+            ';' | ',' | '.' | ':' | '#' => token_type = TokenType::Separator,
             ' ' | '\t' | '\r' => {
                 if buf.len() != 0 && !comment {
                     // clear existing multichar tokens
@@ -51,16 +85,14 @@ pub fn tokenise(file: String) -> Vec<CToken> {
             '/' => {
                 if !div {
                     div = true;
-                    token_type = CTokenType::Operator;
+                    token_type = TokenType::Operator;
                 } else {
                     _ = tokens.pop();
                     comment = true;
                     continue;
                 }
             }
-            '+' | '-' | '=' | '*' | '<' | '>' | '?' | '|' | '&' => {
-                token_type = CTokenType::Operator
-            }
+            '+' | '-' | '=' | '*' | '?' | '|' | '&' => token_type = TokenType::Operator,
             '\n' => {
                 if comment {
                     // single-line comment
@@ -85,74 +117,48 @@ pub fn tokenise(file: String) -> Vec<CToken> {
                 tokens.push(multichar_token(&buf));
                 buf.clear();
             }
-            tokens.push(CToken {
-                token_type,
-                value: c.to_string(),
-            });
+            tokens.push(Token::new(token_type, c.to_string()));
         }
     }
-    let combined_tokens = combine_compound(tokens);
-    let combined_tokens = combine_compound(combined_tokens); // 2nd pass for 3-char operators
-
-    return combined_tokens;
+    tokens.reverse();
+    return tokens;
 }
 
-fn multichar_token(token: &String) -> CToken {
+fn multichar_token(token: &String) -> Token {
     // logic handler determining what a multi-character token is
     match token.as_str() {
-        "int" | "double" | "float" | "char" | "void" | "struct" | "enum" | "long" | "short" => {
-            CToken {
-                token_type: CTokenType::Type,
-                value: token.clone(),
-            }
+        ">>" | "<<" | ">" | "<" => Token::new(TokenType::Operator, token.clone()),
+        "i32" | "f64" | "f32" | "i8" | "i64" | "i16" | "void" | "obj" | "fn" | "enum" => {
+            Token::new(TokenType::Type, token.clone())
         }
-        "auto" | "const" | "register" | "unsigned" | "static" | "volatile" | "extern" => CToken {
-            token_type: CTokenType::Specifier,
-            value: token.clone(),
-        },
+        "immut" | "unsigned" => Token::new(TokenType::Specifier, token.clone()),
         "if" | "break" | "continue" | "do" | "else" | "for" | "goto" | "switch" | "while" => {
-            CToken {
-                token_type: CTokenType::Control,
-                value: token.clone(),
-            }
+            Token::new(TokenType::Control, token.clone())
         }
-        "return" => CToken {
-            token_type: CTokenType::Return,
-            value: "".to_string(),
-        },
-        "true" | "false" => CToken {
-            token_type: CTokenType::Boolean,
-            value: token.clone(),
-        },
-        _ => multichar_token_id(&token),
+        "return" => Token::new_blank(TokenType::Return),
+        "true" | "false" => Token::new(TokenType::Boolean, token.clone()),
+        _ => Token::new(TokenType::Identifier, token.clone()),
     }
 }
 
-fn multichar_token_id(token: &String) -> CToken {
-    return CToken {
-        token_type: CTokenType::Identifier,
-        value: token.clone(),
-    };
-}
-
-fn combine_compound(tokens: Vec<CToken>) -> Vec<CToken> {
+fn combine_compound(tokens: Vec<Token>) -> Vec<Token> {
     /*
        Combines multichar operator tokens.
     */
-    let mut new_tokens: Vec<CToken> = vec![];
+    let mut new_tokens: Vec<Token> = vec![];
 
     let mut iter = tokens.into_iter().peekable();
     while let Some(curr) = iter.next() {
         match curr.token_type {
-            CTokenType::Operator => {
+            TokenType::Operator => {
                 // check for double char operators
                 if let Some(next) = iter.next() {
                     match next.token_type {
                         // check next token value
-                        CTokenType::Operator => {
+                        TokenType::Operator => {
                             let mut new_val = curr.value.clone();
                             new_val.push_str(next.value.clone().as_str());
-                            new_tokens.push(CToken::new(CTokenType::Operator, new_val));
+                            new_tokens.push(Token::new(TokenType::Operator, new_val));
                         }
                         _ => {
                             new_tokens.push(curr);
