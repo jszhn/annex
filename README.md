@@ -1,2 +1,5 @@
 # Annex
-The *Annex Toy Compiler* is a hobbyist C89 to RISC-V compiler, built in Rust. It aims to implement the standard compiler workflow: a tokeniser, syntax tree, assembler, and linker.
+
+*Annex* is a hobbyist imperative, compiled programming language. It compiles to RISC-V assembly and is built in Rust,
+with
+aims to implement the standard compiler workflow: a tokeniser, syntax tree, assembler, and linker.

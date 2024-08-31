@@ -17,14 +17,14 @@ impl Lexer {
     pub fn consume(&mut self) -> Token {
         self.tokens
             .pop()
-            .unwrap_or(Token::new(TokenType::EOF, "".to_string()))
+            .unwrap_or(Token::new_blank(TokenType::EOF))
     }
 
-    pub fn peek(&mut self) -> &Token {
+    pub fn peek(&mut self) -> Token {
         self.tokens
             .last()
-            .clone()
-            .unwrap_or(&Token::new(TokenType::EOF, "".to_string()))
+            .cloned()
+            .unwrap_or(Token::new_blank(TokenType::EOF))
     }
 
     pub fn get(&mut self) -> &Vec<Token> {
@@ -32,6 +32,7 @@ impl Lexer {
     }
 }
 
+#[derive(Clone, Hash, Eq, PartialEq)]
 pub struct Token {
     pub(crate) token_type: TokenType,
     pub(crate) value: Option<String>,
@@ -72,7 +73,7 @@ fn tokenise(file: String) -> Vec<Token> {
             '(' | '{' | '[' => token_type = TokenType::GroupBegin,
             ')' | '}' | ']' => token_type = TokenType::GroupEnd,
             ';' | ',' | '.' | ':' | '#' => token_type = TokenType::Separator,
-            ' ' | '\t' | '\r' => {
+            ' ' | '\t' | '\r' | '\x04' => {
                 if buf.len() != 0 && !comment {
                     // clear existing multichar tokens
                     tokens.push(multichar_token(&buf));
@@ -120,17 +121,18 @@ fn tokenise(file: String) -> Vec<Token> {
             tokens.push(Token::new(token_type, c.to_string()));
         }
     }
-    tokens.reverse();
+    tokens.reverse(); // for iterating during parse tree generation
     return tokens;
 }
 
 fn multichar_token(token: &String) -> Token {
     // logic handler determining what a multi-character token is
     match token.as_str() {
-        ">>" | "<<" | ">" | "<" => Token::new(TokenType::Operator, token.clone()),
-        "i32" | "f64" | "f32" | "i8" | "i64" | "i16" | "void" | "obj" | "fn" | "enum" => {
+        ">>" | "<<" | ">" | "<" | "and" | "or" => Token::new(TokenType::Operator, token.clone()),
+        "i32" | "f64" | "f32" | "i8" | "i64" | "i16" | "void" | "enum" => {
             Token::new(TokenType::Type, token.clone())
         }
+        "fn" => Token::new_blank(TokenType::Function),
         "immut" | "unsigned" => Token::new(TokenType::Specifier, token.clone()),
         "if" | "break" | "continue" | "do" | "else" | "for" | "goto" | "switch" | "while" => {
             Token::new(TokenType::Control, token.clone())
@@ -141,34 +143,34 @@ fn multichar_token(token: &String) -> Token {
     }
 }
 
-fn combine_compound(tokens: Vec<Token>) -> Vec<Token> {
-    /*
-       Combines multichar operator tokens.
-    */
-    let mut new_tokens: Vec<Token> = vec![];
-
-    let mut iter = tokens.into_iter().peekable();
-    while let Some(curr) = iter.next() {
-        match curr.token_type {
-            TokenType::Operator => {
-                // check for double char operators
-                if let Some(next) = iter.next() {
-                    match next.token_type {
-                        // check next token value
-                        TokenType::Operator => {
-                            let mut new_val = curr.value.clone();
-                            new_val.push_str(next.value.clone().as_str());
-                            new_tokens.push(Token::new(TokenType::Operator, new_val));
-                        }
-                        _ => {
-                            new_tokens.push(curr);
-                            new_tokens.push(next)
-                        } // if next token isn't an operator, we push as normal
-                    }
-                }
-            }
-            _ => new_tokens.push(curr),
-        }
-    }
-    new_tokens
-}
+// fn combine_compound(tokens: Vec<Token>) -> Vec<Token> {
+//     /*
+//        Combines multichar operator tokens.
+//     */
+//     let mut new_tokens: Vec<Token> = vec![];
+//
+//     let mut iter = tokens.into_iter().peekable();
+//     while let Some(curr) = iter.next() {
+//         match curr.token_type {
+//             TokenType::Operator => {
+//                 // check for double char operators
+//                 if let Some(next) = iter.next() {
+//                     match next.token_type {
+//                         // check next token value
+//                         TokenType::Operator => {
+//                             let mut new_val = curr.value.clone();
+//                             new_val.push_str(next.value.clone().as_str());
+//                             new_tokens.push(Token::new(TokenType::Operator, new_val));
+//                         }
+//                         _ => {
+//                             new_tokens.push(curr);
+//                             new_tokens.push(next)
+//                         } // if next token isn't an operator, we push as normal
+//                     }
+//                 }
+//             }
+//             _ => new_tokens.push(curr),
+//         }
+//     }
+//     new_tokens
+// }

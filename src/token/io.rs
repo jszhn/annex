@@ -1,17 +1,31 @@
-use crate::token::{Token, TokenType};
+use crate::token::{Lexer, Token, TokenType};
 use std::fs;
 
-pub fn print_tokens(vec: &Vec<Token>) {
-    // only prints tokens
-    for item in vec {
-        println!("{}", item.value);
+impl Lexer {
+    pub fn print_tokens(&self) {
+        // only prints tokens
+        for item in &self.tokens {
+            if let Some(value) = &item.value {
+                println!("{}", value);
+            }
+        }
+    }
+
+    pub fn print_all(&self) {
+        // prints all: enum value and token
+        for item in &self.tokens {
+            if let Some(value) = &item.value {
+                println!("{}: {}", get_token_name(item.token_type), value);
+            }
+        }
     }
 }
 
-pub fn print_all(vec: &Vec<Token>) {
-    // prints all: enum value and token
-    for item in vec {
-        println!("{}: {}", get_token_name(item.token_type), item.value);
+impl Token {
+    pub fn print(&self) {
+        if let Some(val) = &self.value {
+            println!("{}", val);
+        }
     }
 }
 
@@ -20,10 +34,12 @@ impl crate::util::OutputHandler for Vec<Token> {
         let mut output: String = String::from("");
         for item in self {
             let mut buf = get_token_name(item.token_type);
-            buf.push_str(": ");
-            buf.push_str(item.value.as_str());
-            buf.push_str("\n");
-            output.push_str(buf.as_str());
+            if let Some(value) = &item.value {
+                buf.push_str(": ");
+                buf.push_str(value.as_str());
+                buf.push_str("\n");
+                output.push_str(buf.as_str());
+            }
         }
         if let Ok(()) = fs::write(path, output) {
             true
