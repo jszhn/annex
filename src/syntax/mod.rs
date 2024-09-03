@@ -51,31 +51,54 @@ impl AstNode {
     }
 }
 
-// fn parse(mut tokens: Lexer) -> Ast {
-//     let mut functions: HashSet<grammar::Function> = HashSet::new();
-//     let mut vars: HashSet<grammar::Variable> = HashSet::new();
-//
-//     loop {
-//         let t = tokens.peek();
-//         if let TokenType::EOF = t.token_type {
-//             break;
-//         }
-//
-//         match *t.token_type {
-//             // TokenType::Function => _ = functions.insert(grammar::function_handler(&mut tokens)),
-//             TokenType::Operator | TokenType::Identifier => _ = construct_expr(&mut tokens, 0),
-//             _ => {
-//                 eprintln!("Bad, unsupported, or unrecognised token. Exiting.");
-//                 std::process::exit(-1);
-//             }
-//         }
-//         tokens.consume();
-//     }
-//     return Ast::new_head(AstNode::new(tokens.consume()));
-// }
+fn parse(mut tokens: Lexer) -> Ast {
+    // todo!();
+    let mut functions: HashSet<grammar::Function> = HashSet::new();
+    let mut vars: HashSet<grammar::Variable> = HashSet::new();
+
+    let itr = tokens.get_ref().iter().rev();
+    for tok in itr {
+        if let TokenType::EOF = tok.token_type {
+            break;
+        }
+
+        let mut scan = false;
+        let mut _return = false;
+        let mut return_type: grammar::DType;
+        match tok.token_type {
+            TokenType::Function => scan = true,
+            TokenType::Type => {
+                if !scan {
+                    continue;
+                } else {
+                    return_type = grammar::DType::from_str(tok.value.clone());
+                }
+            }
+            _ => eprintln!("WARN: unsupported behaviour"),
+        }
+    }
+
+    loop {
+        let t = tokens.peek();
+        if let TokenType::EOF = t.token_type {
+            break;
+        }
+
+        match t.token_type {
+            // TokenType::Function => _ = functions.insert(grammar::function_handler(&mut tokens)),
+            TokenType::Operator | TokenType::Identifier => _ = construct_expr(&mut tokens, 0),
+            _ => {
+                eprintln!("Bad, unsupported, or unrecognised token. Exiting.");
+                std::process::exit(-1);
+            }
+        }
+        tokens.consume();
+    }
+    return Ast::new_head(AstNode::new(ExprType::Atom("test".to_string())));
+}
 
 fn construct_expr(tokens: &mut Lexer, min_power: u8) -> ExprType {
-    // Pratt parser, with functional atom/cons types
+    // Pratt parser, with FP atom/cons types
     // based on https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
     let token = tokens.consume();
     token.print();
