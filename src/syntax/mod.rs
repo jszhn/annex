@@ -4,6 +4,7 @@ pub mod types;
 
 use crate::token::types::TokenType;
 use crate::token::{Lexer, Token};
+use std::any::Any;
 use std::cmp::PartialEq;
 use std::collections::HashSet;
 
@@ -22,6 +23,10 @@ pub struct AstNode {
 }
 
 impl Ast {
+    pub fn get_head_ref(&self) -> &Box<AstNode> {
+        return &self.head;
+    }
+
     pub fn new(mut tokens: Lexer) -> Ast {
         return Ast {
             head: AstNode::new(construct_expr(&mut tokens, 0)),
@@ -34,6 +39,10 @@ impl Ast {
 }
 
 impl AstNode {
+    pub fn print(&self) {
+        self.expr_type.print();
+    }
+
     fn new(expr_type: ExprType) -> Box<AstNode> {
         return Box::new(AstNode { expr_type });
     }
@@ -48,6 +57,21 @@ impl AstNode {
         return Box::new(AstNode {
             expr_type: ExprType::Cons(value, next),
         });
+    }
+}
+
+impl ExprType {
+    fn print(&self) {
+        match self {
+            ExprType::Atom(s) => println!("Atom: {}", s),
+            ExprType::Cons(s, vec) => {
+                println!("Cons: {}, {} elems in vector (", s, vec.len());
+                for e in vec {
+                    e.print();
+                }
+                println!(")");
+            }
+        }
     }
 }
 
@@ -102,14 +126,27 @@ fn construct_expr(tokens: &mut Lexer, min_power: u8) -> ExprType {
     // based on https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
     let token = tokens.consume();
     token.print();
+    let Some(value) = token.value else {
+        eprintln!("ERR: invalid token value. Empty string?");
+        std::process::exit(-1);
+    };
+
     let mut lhs: ExprType = match token.token_type {
-        TokenType::Identifier => {
-            if let Some(value) = token.value {
-                ExprType::Atom(value)
-            } else {
-                eprintln!("Bad or unrecognised identifier. Exiting.");
-                std::process::exit(-1);
-            }
+        TokenType::Identifier => ExprType::Atom(value.clone()),
+        TokenType::Operator => {
+            let ((), r_bp) = pre_binding_power(&value);
+            let rhs = construct_expr(tokens, r_bp);
+            ExprType::Cons(value.clone(), vec![rhs])
+        }
+        TokenType::GroupBegin => {
+            // if value == "(" {
+            let lhs = construct_expr(tokens, 0);
+            assert_eq!(
+                tokens.consume(),
+                Token::new(TokenType::GroupEnd, ")".to_string())
+            );
+            lhs
+            // }
         }
         _ => {
             eprintln!("Invalid token type. Exiting.");
@@ -132,26 +169,52 @@ fn construct_expr(tokens: &mut Lexer, min_power: u8) -> ExprType {
                     break;
                 }
             }
-            TokenType::Identifier => {
-                eprintln!("ERR: at least two identifiers/literals used next to each other without an operator. Exiting.");
-                std::process::exit(-1);
-            }
+            TokenType::GroupBegin | TokenType::GroupEnd => tokens.peek().value.clone(),
+            // TokenType::Identifier => {
+            //     eprintln!("ERR: at least two identifiers/literals used next to each other without an operator. Exiting.");
+            //     std::process::exit(-1);
+            // }
             TokenType::Operator => tokens.peek().value.clone(),
             _ => {
-                eprintln!("Bad, unsupported, or unrecognised token. Exiting.");
+                eprintln!(
+                    "ERR: Bad, unsupported, or unrecognised token {}. Exiting.",
+                    value
+                );
                 std::process::exit(-1);
             }
         };
 
-        if let Some(value) = t {
-            let (l_bp, r_bp) = set_binding_power(&value);
+        if let Some((l_bp, ())) = post_binding_power(&value) {
             if l_bp < min_power {
                 break;
             }
             _ = tokens.consume();
-            let rhs: ExprType = construct_expr(tokens, r_bp);
-            lhs = ExprType::Cons(value.clone(), vec![lhs, rhs]);
+
+            lhs = if value == "[" {
+                let rhs = construct_expr(tokens, 0);
+                assert_eq!(
+                    tokens.consume(),
+                    Token::new(TokenType::GroupEnd, "]".to_string())
+                );
+                ExprType::Cons(value.clone(), vec![lhs, rhs])
+            } else {
+                ExprType::Cons(value.clone(), vec![lhs])
+            };
+            continue;
         }
+
+        if let Some(value) = t {
+            if let Some((l_bp, r_bp)) = set_binding_power(&value) {
+                if l_bp < min_power {
+                    break;
+                }
+                _ = tokens.consume();
+                let rhs: ExprType = construct_expr(tokens, r_bp);
+                lhs = ExprType::Cons(value.clone(), vec![lhs, rhs]);
+                continue;
+            }
+        }
+        break;
     }
     return lhs;
 }
@@ -174,34 +237,42 @@ fn lookahead(
     ind // not found
 }
 
-fn set_binding_power(op_str: &String) -> (u8, u8) {
+fn set_binding_power(op_str: &String) -> Option<(u8, u8)> {
     // determines operator order of precedence
     let op = op_str.as_str();
     match op {
-        "or" => (1, 2),
-        "and" => (3, 4),
-        "|" => (5, 6),
-        "^" => (7, 8),
-        "&" => (9, 10),
-        "==" | "!=" => (11, 12),
-        "<<" | ">>" => (13, 14),
-        "+" | "-" => (15, 16),
-        "*" | "/" | "%" => (17, 18),
-        "=" => (23, 24),
-        _ => {
-            eprintln!("Bad, unsupported, or unrecognised operator token. Exiting.");
-            std::process::exit(-1);
-        }
+        "=" => Some((1, 2)),
+        "or" => Some((7, 8)),
+        "and" => Some((9, 10)),
+        "|" => Some((11, 12)),
+        "^" => Some((13, 14)),
+        "&" => Some((15, 16)),
+        "==" | "!=" => Some((17, 18)),
+        "<<" | ">>" => Some((19, 20)),
+        "+" | "-" => Some((27, 28)),
+        "*" | "/" | "%" => Some((31, 32)),
+        _ => None,
     }
 }
 
 fn pre_binding_power(op_str: &String) -> ((), u8) {
     let op = op_str.as_str();
     match op {
-        "+" | "-" => ((), 19),
+        "+" | "-" => ((), 3),
         _ => {
-            eprintln!("Bad, unsupported, or unrecognised token. Exiting.");
+            eprintln!(
+                "ERR: Bad, unsupported, or unrecognised token {}. Exiting.",
+                op_str
+            );
             std::process::exit(-1);
         }
+    }
+}
+
+fn post_binding_power(op_str: &String) -> Option<(u8, ())> {
+    let op = op_str.as_str();
+    match op {
+        "!" | "[" => Some((36, ())),
+        _ => return None,
     }
 }

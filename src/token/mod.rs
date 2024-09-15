@@ -4,7 +4,7 @@ pub mod io;
 pub mod types;
 
 pub struct Lexer {
-    tokens: Vec<Token>,
+    pub tokens: Vec<Token>,
 }
 
 impl Lexer {
@@ -27,12 +27,12 @@ impl Lexer {
             .unwrap_or(Token::new_blank(TokenType::EOF))
     }
 
-    pub fn get(&mut self) -> &Vec<Token> {
+    pub fn get_ref(&mut self) -> &Vec<Token> {
         return &self.tokens;
     }
 }
 
-#[derive(Clone, Hash, Eq, PartialEq)]
+#[derive(Clone, Hash, Eq, PartialEq, Debug)]
 pub struct Token {
     pub(crate) token_type: TokenType,
     pub(crate) value: Option<String>,
@@ -93,7 +93,7 @@ fn tokenise(file: String) -> Vec<Token> {
                     continue;
                 }
             }
-            '+' | '-' | '=' | '*' | '?' | '|' | '&' => token_type = TokenType::Operator,
+            '+' | '-' | '=' | '*' | '?' | '|' | '&' | '^' | '!' => token_type = TokenType::Operator,
             '\n' => {
                 if comment {
                     // single-line comment

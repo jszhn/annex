@@ -14,5 +14,5 @@ pub fn get_file_contents(path: &String) -> String {
 
 pub trait OutputHandler {
     fn to_txt(&self, path: String) -> bool;
-    fn from_txt(&self, path: String);
+    fn from_txt(path: String);
 }
