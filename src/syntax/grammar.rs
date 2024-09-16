@@ -1,8 +1,5 @@
 use crate::syntax::AstNode;
 use crate::token;
-use crate::token::{Lexer, Token};
-use std::iter::Rev;
-use std::path::Iter;
 
 #[derive(Eq, Hash, PartialEq)]
 pub struct Function {

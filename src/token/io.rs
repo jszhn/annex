@@ -1,7 +1,8 @@
+use std::fs;
+
 use crate::token::types::TokenType;
 use crate::token::{Lexer, Token};
-use crate::{token, util};
-use std::fs;
+use crate::util;
 
 impl Lexer {
     pub fn print_tokens(&self) {
@@ -31,7 +32,7 @@ impl Token {
     }
 }
 
-impl util::OutputHandler for Vec<token::Token> {
+impl util::OutputHandler for Vec<Token> {
     fn to_txt(&self, path: String) -> bool {
         let mut output: String = String::from("");
         for item in self {

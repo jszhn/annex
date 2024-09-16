@@ -1,6 +1,5 @@
-use crate::syntax::Ast;
-use std::fmt;
-
-impl Ast {
-    fn print(&self) {}
-}
+// use crate::syntax::Ast;
+//
+// impl Ast {
+//     fn print(&self) {}
+// }

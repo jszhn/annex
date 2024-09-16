@@ -4,8 +4,6 @@ pub mod types;
 
 use crate::token::types::TokenType;
 use crate::token::{Lexer, Token};
-use std::any::Any;
-use std::cmp::PartialEq;
 use std::collections::HashSet;
 
 pub struct Ast {
@@ -13,13 +11,13 @@ pub struct Ast {
     head: Box<AstNode>,
 }
 
-enum ExprType {
+pub(crate) enum ExprType {
     Atom(String),
     Cons(String, Vec<ExprType>),
 }
 
 pub struct AstNode {
-    expr_type: ExprType,
+    pub(crate) expr_type: ExprType,
 }
 
 impl Ast {
@@ -29,9 +27,6 @@ impl Ast {
 
     pub fn new(mut tokens: Lexer) -> Ast {
         return parse(&mut tokens);
-        // return Ast {
-        //     head: AstNode::new(construct_expr(&mut tokens, 0)),
-        // };
     }
 
     pub fn new_head(head: Box<AstNode>) -> Ast {
@@ -135,7 +130,7 @@ fn construct_expr(tokens: &mut Lexer, min_power: u8) -> ExprType {
     // Pratt parser, with FP atom/cons types
     // based on https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
     let token = tokens.consume();
-    token.print();
+    // token.print();
     let Some(value) = token.value else {
         eprintln!("ERR: invalid token value. Empty string?");
         std::process::exit(-1);
