@@ -14,8 +14,9 @@ fn main() {
 
     let file_path = &args[1];
     let file_contents = util::get_file_contents(file_path);
-    println!("{}", file_contents);
     let token_vec = token::Lexer::new(file_contents);
     let syntax_tree = syntax::Ast::new(token_vec);
     syntax_tree.get_head_ref().print();
+    let asm = gen::Assembly::new(syntax_tree);
+    asm.print();
 }
