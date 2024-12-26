@@ -1,4 +1,4 @@
-// use crate::syntax::Ast;
+// use crate::ast::Ast;
 //
 // impl Ast {
 //     fn print(&self) {}

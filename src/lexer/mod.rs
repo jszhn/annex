@@ -157,9 +157,10 @@ fn multichar_token(token: &String) -> Token {
         "i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32" | "u64" | "f64" | "f32" | "void"
         | "enum" => Token::new(TokenType::Type, token.clone()),
         "fn" => Token::new_blank(TokenType::Function),
-        "if" | "break" | "continue" | "do" | "else" | "for" | "goto" | "switch" | "while" => {
+        "if" | "break" | "continue" | "else" | "for" | "goto" | "while" => {
             Token::new(TokenType::Control, token.clone())
         }
+        "var" | "const" | "vol" => Token::new(TokenType::Specifier, token.clone()),
         "return" => Token::new_blank(TokenType::Return),
         "true" | "false" => Token::new(TokenType::Boolean, token.clone()),
         _ => {
