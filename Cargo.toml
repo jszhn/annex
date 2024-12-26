@@ -2,3 +2,7 @@
 name = "annex"
 version = "0.1.0"
 edition = "2021"
+
+[dependencies]
+fs-err = "3.0.0"
+itertools = "0.13.0"

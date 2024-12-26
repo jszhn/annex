@@ -1,17 +1,35 @@
-use crate::token::types::TokenType;
+use fs_err as fs;
+use std::error::Error;
 
 pub mod io;
-pub mod types;
+
+#[derive(Eq, PartialEq, Hash, Clone, Copy, Debug)]
+pub enum TokenType {
+    Type,
+    Control,
+    Function,
+    Specifier,
+    Operator,
+    Identifier, // catch-all for non keyword tokens
+    Separator,
+    Return,
+    Boolean,
+    Decimal,
+    Integer,
+    GroupBegin,
+    GroupEnd,
+    None,
+    EOF,
+}
 
 pub struct Lexer {
     pub tokens: Vec<Token>,
 }
 
 impl Lexer {
-    pub fn new(file: String) -> Lexer {
-        Lexer {
-            tokens: tokenise(file),
-        }
+    pub fn new(file: String) -> Result<Lexer, Box<dyn Error>> {
+        let token_str = tokenise(file)?;
+        Ok(Lexer { tokens: token_str })
     }
 
     pub fn consume(&mut self) -> Token {
@@ -34,28 +52,31 @@ impl Lexer {
 
 #[derive(Clone, Hash, Eq, PartialEq, Debug)]
 pub struct Token {
-    pub(crate) token_type: TokenType,
-    pub(crate) value: Option<String>,
+    pub token_type: TokenType,
+    pub lexeme: Option<String>,
 }
 
 impl Token {
     pub fn new(token_type: TokenType, value: String) -> Token {
         Token {
             token_type,
-            value: Some(value),
+            lexeme: Some(value),
         }
     }
 
+    /// Token constructor with no lexeme field.
     pub fn new_blank(token_type: TokenType) -> Token {
         Token {
             token_type,
-            value: None,
+            lexeme: None,
         }
     }
 }
 
-fn tokenise(file: String) -> Vec<Token> {
-    // primary tokenisation interface
+/// Primary lexical analysis interface.
+///     Input: file contents
+///     Returns: vector of tokens
+fn tokenise(file: String) -> Result<Vec<Token>, Box<dyn Error>> {
     let chars = file.chars();
     let mut tokens: Vec<Token> = Vec::new();
     let mut buf = String::new();
@@ -114,63 +135,68 @@ fn tokenise(file: String) -> Vec<Token> {
 
         if single_token {
             if buf.len() != 0 {
-                // clear existing multichar token
+                // clear existing multichar lexeme
                 tokens.push(multichar_token(&buf));
                 buf.clear();
+            } else {
+                tokens.push(Token::new(token_type, c.to_string()));
             }
-            tokens.push(Token::new(token_type, c.to_string()));
         }
     }
+    tokens.push(Token::new_blank(TokenType::EOF));
     tokens.reverse(); // for iterating during parse tree generation
-    return tokens;
+    Ok(tokens)
 }
 
+/// Function that converts a multi-character lexeme into a token.
+/// By default, any unreserved lexemes will be converted into an identifier token.
 fn multichar_token(token: &String) -> Token {
-    // logic handler determining what a multi-character token is
+    // logic handler determining what a multi-character lexer is
     match token.as_str() {
         ">>" | "<<" | ">" | "<" | "and" | "or" => Token::new(TokenType::Operator, token.clone()),
-        "i32" | "f64" | "f32" | "i8" | "i64" | "i16" | "void" | "enum" => {
-            Token::new(TokenType::Type, token.clone())
-        }
+        "i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32" | "u64" | "f64" | "f32" | "void"
+        | "enum" => Token::new(TokenType::Type, token.clone()),
         "fn" => Token::new_blank(TokenType::Function),
-        "immut" | "unsigned" => Token::new(TokenType::Specifier, token.clone()),
         "if" | "break" | "continue" | "do" | "else" | "for" | "goto" | "switch" | "while" => {
             Token::new(TokenType::Control, token.clone())
         }
         "return" => Token::new_blank(TokenType::Return),
         "true" | "false" => Token::new(TokenType::Boolean, token.clone()),
-        _ => Token::new(TokenType::Identifier, token.clone()),
+        _ => {
+            if let Ok(_) = token.parse::<i32>() {
+                Token::new(TokenType::Integer, token.clone())
+            } else if let Ok(_) = token.parse::<f32>() {
+                Token::new(TokenType::Decimal, token.clone())
+            } else {
+                Token::new(TokenType::Identifier, token.clone())
+            }
+        }
     }
 }
 
-// fn combine_compound(tokens: Vec<Token>) -> Vec<Token> {
-//     /*
-//        Combines multichar operator tokens.
-//     */
-//     let mut new_tokens: Vec<Token> = vec![];
-//
-//     let mut iter = tokens.into_iter().peekable();
-//     while let Some(curr) = iter.next() {
-//         match curr.token_type {
-//             TokenType::Operator => {
-//                 // check for double char operators
-//                 if let Some(next) = iter.next() {
-//                     match next.token_type {
-//                         // check next token value
-//                         TokenType::Operator => {
-//                             let mut new_val = curr.value.clone();
-//                             new_val.push_str(next.value.clone().as_str());
-//                             new_tokens.push(Token::new(TokenType::Operator, new_val));
-//                         }
-//                         _ => {
-//                             new_tokens.push(curr);
-//                             new_tokens.push(next)
-//                         } // if next token isn't an operator, we push as normal
-//                     }
-//                 }
-//             }
-//             _ => new_tokens.push(curr),
-//         }
-//     }
-//     new_tokens
-// }
+#[cfg(test)]
+fn basic_test() {
+    let files: Vec<&str> = vec!["tests/files/arithmetic.ax"];
+    let tokens: Vec<Vec<Token>> = vec![vec![
+        Token::new_blank(TokenType::EOF),
+        Token::new(TokenType::Separator, ";".to_string()),
+        Token::new(TokenType::Integer, "555".to_string()),
+        Token::new(TokenType::Separator, ".".to_string()),
+        Token::new(TokenType::Identifier, "3".to_string()),
+        Token::new(TokenType::Operator, "*".to_string()),
+        Token::new(TokenType::Identifier, "10".to_string()),
+        Token::new(TokenType::Operator, "+".to_string()),
+        Token::new(TokenType::Identifier, "annex".to_string()),
+    ]];
+
+    for (i, file) in files.iter().enumerate() {
+        let contents = fs::read_to_string(file).unwrap();
+        let mut lex = Lexer::new(contents).expect("err: lexical analysis failed!");
+        lex.print_all();
+        let test_tokens = lex.get_ref();
+        for j in 0..tokens.len() {
+            assert_eq!(tokens[i][j].token_type, test_tokens[j].token_type);
+            assert_eq!(tokens[i][j].lexeme, test_tokens[j].lexeme);
+        }
+    }
+}
