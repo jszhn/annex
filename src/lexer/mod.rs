@@ -1,4 +1,5 @@
 use fs_err as fs;
+use log::info;
 use std::error::Error;
 
 pub mod io;
@@ -28,7 +29,9 @@ pub struct Lexer {
 
 impl Lexer {
     pub fn new(file: String) -> Result<Lexer, Box<dyn Error>> {
+        info!("Starting lexer");
         let token_str = tokenise(file)?;
+        info!("Lexer completed");
         Ok(Lexer { tokens: token_str })
     }
 
@@ -114,7 +117,9 @@ fn tokenise(file: String) -> Result<Vec<Token>, Box<dyn Error>> {
                     continue;
                 }
             }
-            '+' | '-' | '=' | '*' | '?' | '|' | '&' | '^' | '!' => token_type = TokenType::Operator,
+            '+' | '-' | '=' | '*' | '?' | '|' | '&' | '^' | '>' | '<' | '~' => {
+                token_type = TokenType::Operator
+            }
             '\n' => {
                 if comment {
                     // single-line comment
@@ -151,13 +156,14 @@ fn tokenise(file: String) -> Result<Vec<Token>, Box<dyn Error>> {
 /// Function that converts a multi-character lexeme into a token.
 /// By default, any unreserved lexemes will be converted into an identifier token.
 fn multichar_token(token: &String) -> Token {
-    // logic handler determining what a multi-character lexer is
+    // determines what a multi-character token is
     match token.as_str() {
-        ">>" | "<<" | ">" | "<" | "and" | "or" => Token::new(TokenType::Operator, token.clone()),
-        "i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32" | "u64" | "f64" | "f32" | "void"
-        | "enum" => Token::new(TokenType::Type, token.clone()),
+        ">>" | "<<" | "and" | "or" => Token::new(TokenType::Operator, token.clone()),
+        "i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32" | "u64" | "f64" | "f32" | "void" => {
+            Token::new(TokenType::Type, token.clone())
+        }
         "fn" => Token::new_blank(TokenType::Function),
-        "if" | "break" | "continue" | "else" | "for" | "goto" | "while" => {
+        "if" | "while" | "for" | "break" | "continue" | "elif" | "else" => {
             Token::new(TokenType::Control, token.clone())
         }
         "var" | "const" | "vol" => Token::new(TokenType::Specifier, token.clone()),
