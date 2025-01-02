@@ -1,14 +1,17 @@
-use crate::syntax::{Ast, ExprType};
-use std::fmt;
+use crate::ast::{Ast, ExprType};
+use crate::gen::util::AsmError;
+use std::fs;
+use std::io::Write;
 
 mod asm;
+mod util;
 
 pub struct Assembly {
     value: String,
 }
 
 impl Assembly {
-    pub fn new(tree: Ast) -> Assembly {
+    pub fn new(tree: Ast) -> Result<Assembly, AsmError> {
         generate(tree)
     }
 
@@ -16,8 +19,10 @@ impl Assembly {
         return Assembly { value: input };
     }
 
-    pub fn to_file(&self, path: String) {
-        todo!()
+    pub fn to_file(&self, path: String) -> std::io::Result<()> {
+        let mut file = fs::File::create(path)?;
+        file.write_all(self.value.as_str().as_bytes())?;
+        Ok(())
     }
 
     pub fn print(&self) {
@@ -25,7 +30,7 @@ impl Assembly {
     }
 }
 
-fn generate(tree: Ast) -> Assembly {
+fn generate(tree: Ast) -> Result<Assembly, AsmError> {
     let head = tree.get_head_ref();
     let mut file = String::new();
     asm::file_start(&mut file);
@@ -33,11 +38,13 @@ fn generate(tree: Ast) -> Assembly {
     if let ExprType::Cons(val, vec) = &head.expr_type {
         if val == "return" {
             _ = recurse(&vec[0], &mut file);
-            return Assembly::new_str(file);
+            return Ok(Assembly::new_str(file));
         }
     }
     eprint!("ERR: not yet supported. sorry!");
-    return Assembly::new_str("".to_string());
+    Err(AsmError::new(
+        "Err in code generation: not yet supported. Sorry!",
+    ))
 }
 
 fn recurse(node: &ExprType, file: &mut String) -> i32 {

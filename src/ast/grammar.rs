@@ -1,3 +1,4 @@
+use crate::ast::types::DType;
 use crate::ast::AstNode;
 use crate::lexer;
 

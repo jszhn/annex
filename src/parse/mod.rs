@@ -2,10 +2,11 @@ mod util;
 
 use crate::lexer::{Lexer, Token, TokenType};
 use crate::parse::util::ParserError;
+use crate::parse::ParseNode::Function;
 use std::error::Error;
 
 pub struct Parser {
-    tree: Vec<ParseNode>,
+    head: ParseNode,
 }
 
 impl Parser {
@@ -14,18 +15,60 @@ impl Parser {
     }
 }
 
+trait Group {
+    fn push_body(&mut self, node: ParseNode) -> Result<(), ParserError>;
+}
+
 enum ParseNode {
     Function(FunctionNode),
     Binary(BinaryNode),
     Unary(UnaryNode),
     Value(Value),
     Expr(ExprNode),
+    Control(ControlNode),
+    Loop(LoopNode),
+    Scope(ScopeNode),
+    None,
+}
+
+impl Group for ParseNode {
+    fn push_body(&mut self, node: ParseNode) -> Result<(), ParserError> {
+        match self {
+            ParseNode::Function(n) => n.push_body(node),
+            ParseNode::Loop(n) => n.push_body(node),
+            ParseNode::Scope(n) => n.push_body(node),
+            _ => {
+                return Err(ParserError::new(
+                    "Internal code error. Unexpected parser node type.",
+                ))
+            }
+        }
+        Ok(())
+    }
 }
 
 struct FunctionNode {
     name: Token,
     params: Vec<ParseNode>,
-    body: Box<ParseNode>,
+    body: Vec<ParseNode>,
+}
+
+impl FunctionNode {
+    fn new(name: &Token) -> FunctionNode {
+        FunctionNode {
+            name: name.clone(),
+            params: Vec::new(),
+            body: Vec::new(),
+        }
+    }
+
+    fn push_param(&mut self, param: ParseNode) {
+        self.params.push(param)
+    }
+
+    fn push_body(&mut self, node: ParseNode) {
+        self.body.push(node)
+    }
 }
 
 struct BinaryNode {
@@ -84,9 +127,131 @@ impl ExprNode {
     }
 }
 
+struct ControlNode {
+    cond: ExprNode,
+    elif: Vec<ControlNode>,
+    el: Option<ScopeNode>,
+}
+
+impl ControlNode {
+    fn new(cond: ExprNode) -> ControlNode {
+        ControlNode {
+            cond,
+            elif: Vec::new(),
+            el: None,
+        }
+    }
+
+    fn push_body(&mut self, node: ControlNode) {
+        self.elif.push(node)
+    }
+}
+
+struct LoopNode {
+    _type: TokenType,
+    cond: ExprNode,
+    contents: Vec<ParseNode>,
+}
+
+impl LoopNode {
+    fn new(_type: TokenType, cond: ExprNode) -> LoopNode {
+        LoopNode {
+            _type,
+            cond,
+            contents: Vec::new(),
+        }
+    }
+
+    fn push_body(&mut self, node: ParseNode) {
+        self.contents.push(node)
+    }
+}
+
+struct ScopeNode {
+    contents: Vec<ParseNode>,
+}
+
+impl ScopeNode {
+    fn new() -> ScopeNode {
+        ScopeNode {
+            contents: Vec::new(),
+        }
+    }
+
+    fn push_body(&mut self, node: ParseNode) {
+        self.contents.push(node)
+    }
+}
+
+/// Primary parser interface. Called by the ParseTree struct constructor.
 fn parse(tokens: &mut Lexer) -> Result<Parser, Box<dyn Error>> {
-    let head = construct_expr(tokens, 0)?;
-    Ok(Parser { tree: vec![head] })
+    let head = construct_group_expr(tokens, true)?;
+    Ok(Parser { head })
+}
+
+/// Parse tree generation for grouped constructs (functions, scopes).
+fn construct_group_expr(tokens: &mut Lexer, global_scope: bool) -> Result<ParseNode, ParserError> {
+    let mut node: ParseNode = ParseNode::None;
+    if global_scope {
+        node = ParseNode::Function(FunctionNode::new(&Token::new(
+            TokenType::None,
+            "__global__".to_string(),
+        )));
+    }
+
+    loop {
+        let next = tokens.peek();
+        match next.token_type {
+            TokenType::EOF => break,
+            TokenType::Function => {
+                assert_eq!(tokens.consume(), Token::new_blank(TokenType::Function));
+                let mut fn_node = FunctionNode::new(&tokens.consume());
+                // node = ParseNode::Function(FunctionNode::new(&tokens.consume()));
+                _ = tokens.consume(); // get rid of starting parentheses
+
+                while tokens.peek().token_type != TokenType::GroupEnd {
+                    // function arguments
+                    fn_node.push_param(construct_expr(tokens, 0)?);
+                }
+
+                // function body
+                assert_eq!(
+                    tokens.consume(),
+                    Token::new(TokenType::GroupBegin, "{".to_string())
+                );
+                'inner: loop {
+                    let next = tokens.peek();
+                    let lexeme = next.lexeme.unwrap_or("".to_string());
+                    match next.token_type {
+                        TokenType::GroupBegin => {
+                            if &lexeme == "{" || &lexeme == "(" {
+                                // todo: possibly problematic wrt operator precedence
+                                _ = tokens.consume();
+                                fn_node.push_body(construct_group_expr(tokens, false)?);
+                            }
+                        }
+                        TokenType::GroupEnd => {
+                            if &lexeme == "}" || &lexeme == ")" {
+                                _ = tokens.consume();
+                                break 'inner;
+                            }
+                        }
+                        _ => {
+                            fn_node.push_body(construct_expr(tokens, 0)?);
+                        }
+                    }
+                }
+                node = Function(fn_node);
+            }
+            TokenType::Control => {
+                // if or else
+                let next = tokens.consume().token_type;
+                // todo: everything!
+            }
+            _ => node.push_body(construct_expr(tokens, 0)?)?,
+        }
+    }
+    Ok(node)
 }
 
 fn construct_expr(tokens: &mut Lexer, min_power: usize) -> Result<ParseNode, ParserError> {

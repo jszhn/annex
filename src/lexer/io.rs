@@ -47,10 +47,6 @@ impl util::OutputHandler for Vec<Token> {
         }
         fs::write(path, output)
     }
-
-    fn from_txt(path: String) {
-        todo!()
-    }
 }
 
 impl Display for TokenType {

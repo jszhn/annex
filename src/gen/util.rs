@@ -1,34 +1,29 @@
 use std::fmt::{Debug, Display, Formatter};
-use std::io::Error;
 
-pub trait OutputHandler {
-    fn to_txt(&self, path: String) -> Result<(), Error>;
-}
-
-pub struct UnknownError {
+pub struct AsmError {
     message: String,
 }
 
-impl UnknownError {
-    pub fn new(msg: &str) -> UnknownError {
-        UnknownError {
+impl AsmError {
+    pub fn new(msg: &str) -> AsmError {
+        AsmError {
             message: msg.to_string(),
         }
     }
 }
 
-impl Debug for UnknownError {
+impl Debug for AsmError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("UnknownError")
+        f.debug_struct("AsmError")
             .field("message", &self.message)
             .finish()
     }
 }
 
-impl Display for UnknownError {
+impl Display for AsmError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.message)
     }
 }
 
-impl std::error::Error for UnknownError {}
+impl std::error::Error for AsmError {}
