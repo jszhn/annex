@@ -54,7 +54,13 @@ fn construct_expr(tokens: &mut Lexer, min_power: usize) -> Result<ParseNode, Par
     };
 
     let mut lhs: ParseNode = match &token.token_type {
-        TokenType::Identifier => ParseNode::Value(Value::new(value)),
+        TokenType::Identifier => {
+            if tokens.peek().lexeme.as_deref() == Some("(") {
+                parse_func_call(tokens, &value)?
+            } else {
+                ParseNode::Value(Value::new(value))
+            }
+        }
         TokenType::Boolean => {
             let val = match value.as_str() {
                 "true" => true,
@@ -116,7 +122,32 @@ fn construct_expr(tokens: &mut Lexer, min_power: usize) -> Result<ParseNode, Par
                     break;
                 }
             }
-            TokenType::GroupBegin => tokens.peek().lexeme.clone(),
+            TokenType::GroupBegin => {
+                match next_token.lexeme.as_deref() {
+                    Some("[") => {
+                        // array de-reference
+                        let (l_bp, r_bp) = (36, 37);
+                        if l_bp < min_power {
+                            break;
+                        }
+                        _ = tokens.consume(); // [
+                        let index = construct_expr(tokens, r_bp)?;
+                        assert_eq!(tokens.consume().lexeme.as_deref(), Some("]"));
+
+                        lhs = ParseNode::Binary(BinaryNode::new(
+                            Token::new(TokenType::Operator, "[]".to_string()),
+                            lhs,
+                            index,
+                        ))
+                    }
+                    Some("(") => {
+                        // function call
+                        lhs = parse_func_call(tokens, value)?;
+                    }
+                    _ => break,
+                }
+                tokens.peek().lexeme.clone()
+            }
             TokenType::GroupEnd => {
                 if let Some(val) = &next_token.lexeme {
                     match val.as_str() {
@@ -134,25 +165,6 @@ fn construct_expr(tokens: &mut Lexer, min_power: usize) -> Result<ParseNode, Par
                 ))
             }
         };
-
-        if let Some((l_bp, ())) = post_binding_power(&value) {
-            if l_bp < min_power {
-                break;
-            }
-            _ = tokens.consume();
-
-            lhs = if value == "[" {
-                let rhs = construct_expr(tokens, 0)?;
-                assert_eq!(
-                    tokens.consume(),
-                    Token::new(TokenType::GroupEnd, "]".to_string())
-                );
-                ParseNode::Expr(ExprNode::new(value, vec![lhs, rhs]))
-            } else {
-                ParseNode::Expr(ExprNode::new(value, vec![lhs]))
-            };
-            continue;
-        }
 
         if let Some(value) = next_token_lexeme {
             if let Some((l_bp, r_bp)) = set_binding_power(&value) {
@@ -229,15 +241,15 @@ fn post_binding_power(op_str: &String) -> Option<(usize, ())> {
     }
 }
 
-enum ParseNode {
+pub enum ParseNode {
     Constant(ConstantNode),
     Function(FunctionNode),
+    FunctionCall(FunctionCallNode),
     Binary(BinaryNode),
     Unary(UnaryNode),
     Value(Value),
     ScalarDecl(ScalarDeclNode),
-    ArrayDecl(ArrayDeclNode),
-    Expr(ExprNode),
+    ArrDecl(ArrayDeclNode),
     Return(ReturnNode),
     Control(ControlNode),
     While(WhileNode),
@@ -248,22 +260,24 @@ enum ParseNode {
 }
 
 /// Constant node. Stores value
-enum ConstantNode {
+pub enum ConstantNode {
     Bool(bool),
     Int(i64),
     Float(f64),
 }
 
 struct FunctionNode {
-    name: Token,
-    params: Vec<ParseNode>,
-    body: Box<ParseNode>,
+    pub(crate) name: Token,
+    pub(crate) return_type: Token,
+    pub(crate) params: Vec<ParseNode>,
+    pub(crate) body: Box<ParseNode>,
 }
 
 impl FunctionNode {
     fn new(name: &Token) -> FunctionNode {
         FunctionNode {
             name: name.clone(),
+            return_type: Token::new(TokenType::Type, "void".to_string()),
             params: Vec::new(),
             body: Box::new(ParseNode::None),
         }
@@ -274,8 +288,43 @@ impl FunctionNode {
     }
 
     fn push_param(&mut self, param: ParseNode) {
-        self.params.push(param)
+        self.params.push(param);
     }
+
+    fn set_return(&mut self, typ: Token) {
+        self.return_type = typ;
+    }
+}
+
+struct FunctionCallNode {
+    pub(crate) function: Box<ParseNode>,
+    pub(crate) args: Vec<ParseNode>,
+}
+
+impl FunctionCallNode {
+    fn new(func: ParseNode, args: Vec<ParseNode>) -> FunctionCallNode {
+        FunctionCallNode {
+            function: Box::new(func),
+            args,
+        }
+    }
+}
+
+fn parse_func_call(tokens: &mut Lexer, value: &String) -> Result<ParseNode, ParserError> {
+    _ = tokens.consume(); // (
+    let mut args = Vec::new();
+
+    while tokens.peek().lexeme.as_deref() != Some(")") {
+        args.push(construct_expr(tokens, 0)?);
+        if tokens.peek().lexeme.as_deref() == Some(",") {
+            tokens.consume();
+        }
+    }
+    _ = tokens.consume(); // )
+    Ok(ParseNode::FunctionCall(FunctionCallNode::new(
+        ParseNode::Value(Value::new(&value)),
+        args,
+    )))
 }
 
 /// Constructs a function node.
@@ -307,6 +356,7 @@ fn construct_func(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
             "Error: function must have return type. If no return, use void",
         ));
     }
+    node.set_return(return_type);
 
     // function body
     check_starting_bracket(tokens, "function");
@@ -315,9 +365,9 @@ fn construct_func(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
 }
 
 struct BinaryNode {
-    left: Box<ParseNode>,
-    op: Token,
-    right: Box<ParseNode>,
+    pub(crate) left: Box<ParseNode>,
+    pub(crate) op: Token,
+    pub(crate) right: Box<ParseNode>,
 }
 
 impl BinaryNode {
@@ -331,8 +381,8 @@ impl BinaryNode {
 }
 
 struct UnaryNode {
-    op: Token,
-    operand: Box<ParseNode>,
+    pub(crate) op: Token,
+    pub(crate) operand: Box<ParseNode>,
 }
 
 impl UnaryNode {
@@ -344,8 +394,8 @@ impl UnaryNode {
     }
 }
 
-struct Value {
-    lexeme: String,
+pub(crate) struct Value {
+    pub(crate) lexeme: String,
 }
 
 impl Value {
@@ -357,9 +407,9 @@ impl Value {
 }
 
 struct ScalarDeclNode {
-    specifier: Token,
-    _type: Token,
-    id: String,
+    pub(crate) specifier: Token,
+    pub(crate) _type: Token,
+    pub(crate) id: String,
 }
 
 impl ScalarDeclNode {
@@ -373,10 +423,10 @@ impl ScalarDeclNode {
 }
 
 struct ArrayDeclNode {
-    specifier: Token,
-    _type: Token,
-    size: Box<ParseNode>,
-    id: String,
+    pub(crate) specifier: Token,
+    pub(crate) _type: Token,
+    pub(crate) size: Box<ParseNode>,
+    pub(crate) id: String,
 }
 
 impl ArrayDeclNode {
@@ -418,8 +468,8 @@ fn construct_decl(tokens: &mut Lexer, function: bool) -> Result<ParseNode, Parse
                 "Error: a declaration must end with a semi-colon"
             );
         }
-        let node = ArrayDeclNode::new(specifier, type_token, size, id.lexeme.unwrap());
-        Ok(ParseNode::ArrayDecl(node))
+        let node = ArrayDeclNode::new(specifier, type_token, size, id.lexeme.unwrap_or_default());
+        Ok(ParseNode::ArrDecl(node))
     } else {
         let id = tokens.consume();
         if !function {
@@ -429,27 +479,13 @@ fn construct_decl(tokens: &mut Lexer, function: bool) -> Result<ParseNode, Parse
                 "Error: a declaration must end with a semi-colon"
             );
         }
-        let node = ScalarDeclNode::new(specifier, type_token, id.lexeme.unwrap());
+        let node = ScalarDeclNode::new(specifier, type_token, id.lexeme.unwrap_or_default());
         Ok(ParseNode::ScalarDecl(node))
     };
 }
 
-struct ExprNode {
-    lexeme: String,
-    children: Vec<ParseNode>,
-}
-
-impl ExprNode {
-    fn new(val: &String, vec: Vec<ParseNode>) -> ExprNode {
-        ExprNode {
-            lexeme: val.clone(),
-            children: vec,
-        }
-    }
-}
-
 struct ReturnNode {
-    expr: Option<Box<ParseNode>>,
+    pub(crate) expr: Option<Box<ParseNode>>,
 }
 
 impl ReturnNode {
@@ -482,8 +518,8 @@ fn construct_return(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
 }
 
 struct BasicControlNode {
-    cond: Box<ParseNode>,
-    then: Box<ParseNode>,
+    pub(crate) cond: Box<ParseNode>,
+    pub(crate) then: Box<ParseNode>,
 }
 
 impl BasicControlNode {
@@ -496,9 +532,9 @@ impl BasicControlNode {
 }
 
 struct ControlNode {
-    _if: BasicControlNode,
-    elif: Option<Vec<BasicControlNode>>,
-    el: Option<Box<ParseNode>>,
+    pub(crate) _if: BasicControlNode,
+    pub(crate) elif: Option<Vec<BasicControlNode>>,
+    pub(crate) el: Option<Box<ParseNode>>,
 }
 
 impl ControlNode {
@@ -522,8 +558,8 @@ impl ControlNode {
 }
 
 struct WhileNode {
-    cond: Box<ParseNode>,
-    then: Box<ParseNode>,
+    pub(crate) cond: Box<ParseNode>,
+    pub(crate) then: Box<ParseNode>,
 }
 
 impl WhileNode {
@@ -536,10 +572,10 @@ impl WhileNode {
 }
 
 struct ForNode {
-    pre: Box<ParseNode>,
-    cond: Box<ParseNode>,
-    post: Box<ParseNode>,
-    then: Box<ParseNode>,
+    pub(crate) pre: Box<ParseNode>,
+    pub(crate) cond: Box<ParseNode>,
+    pub(crate) post: Box<ParseNode>,
+    pub(crate) then: Box<ParseNode>,
 }
 
 impl ForNode {
@@ -624,7 +660,7 @@ fn construct_control(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
 }
 
 struct LoopControlNode {
-    _type: Token,
+    pub(crate) _type: Token,
 }
 
 impl LoopControlNode {
@@ -634,7 +670,7 @@ impl LoopControlNode {
 }
 
 struct ScopeNode {
-    contents: Vec<ParseNode>,
+    pub(crate) contents: Vec<ParseNode>,
 }
 
 impl ScopeNode {

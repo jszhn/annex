@@ -52,6 +52,13 @@ impl ParseNode {
                 println!("{}Body:", indent_str);
                 node.body.print_with_indent(indent + 1);
             }
+            ParseNode::FunctionCall(node) => {
+                println!("{}Function call:", indent_str);
+                node.function.print_with_indent(indent + 1);
+                for arg in &node.args {
+                    arg.print_with_indent(indent + 1);
+                }
+            }
             ParseNode::Binary(node) => {
                 println!("{}Binary Operation:", indent_str);
                 println!(
@@ -91,7 +98,7 @@ impl ParseNode {
                 );
                 println!("{}Identifier: {}", indent_str, node.id);
             }
-            ParseNode::ArrayDecl(node) => {
+            ParseNode::ArrDecl(node) => {
                 println!("{}Array Declaration:", indent_str);
                 println!(
                     "{}Specifier: {}",

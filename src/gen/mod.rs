@@ -1,7 +1,8 @@
-use crate::ast::{Ast, ExprType};
-use crate::gen::util::AsmError;
 use std::fs;
 use std::io::Write;
+
+use crate::ast::Ast;
+use crate::gen::util::AsmError;
 
 mod asm;
 mod util;
