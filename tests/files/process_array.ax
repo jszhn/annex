@@ -1,0 +1,8 @@
+var i32[10] arr;
+var i32 x;
+arr[5] = x;
+var i32[2] y = arr[3];
+
+fn process_array{i32[100] input} i32 {
+    return input[50];
+}

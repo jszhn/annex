@@ -1,10 +1,11 @@
 //
-//  Annex programming language grammar
-//      - We're not using ANTLR4!
+//  Reference EBNF grammar specification for the
+//          Annex programming language
+//
 
 grammar annex;
 
-program: (function_decl | scalar_decl)*;
+program: (function_decl | scalar_decl | array_decl)*;
 
 function_decl: 'fn' ID '{' param_list '}' return_type scope;
 param_list: (param (',' param)*)? ;

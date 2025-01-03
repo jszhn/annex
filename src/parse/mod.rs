@@ -8,7 +8,7 @@ use crate::parse::util::ParserError;
 mod util;
 
 pub struct Parser {
-    head: ParseNode,
+    pub head: ParseNode,
 }
 
 impl Parser {
