@@ -5,6 +5,7 @@ use fs_err as fs;
 use log::error;
 
 pub mod ast;
+mod gen;
 pub mod lexer;
 mod parse;
 mod sem;

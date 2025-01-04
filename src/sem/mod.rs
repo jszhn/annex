@@ -1,4 +1,4 @@
-use crate::ast::{Ast, AstNode};
+use crate::ast::{Ast, types::AstNode};
 use crate::sem::err::SemError;
 use crate::sem::sym_table::{FuncEntry, SymTable};
 

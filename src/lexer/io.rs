@@ -1,6 +1,7 @@
-use fs_err as fs;
 use std::fmt::{Debug, Display, Formatter};
 use std::io::Error;
+
+use fs_err as fs;
 
 use crate::lexer::{Lexer, Token, TokenType};
 use crate::util;
@@ -8,7 +9,7 @@ use crate::util;
 impl Lexer {
     pub fn print_tokens(&self) {
         // only prints tokens
-        for item in &self.tokens {
+        for item in self.tokens.iter().rev() {
             if let Some(value) = &item.lexeme {
                 println!("{}", value);
             }
@@ -17,9 +18,11 @@ impl Lexer {
 
     pub fn print_all(&self) {
         // prints all: enum value and lexer
-        for item in &self.tokens {
+        for item in self.tokens.iter().rev() {
             if let Some(value) = &item.lexeme {
                 println!("{}: {}", item.token_type, value);
+            } else {
+                println!("{}", item.token_type);
             }
         }
     }
@@ -84,6 +87,7 @@ fn get_token_name(_type: TokenType) -> String {
         TokenType::GroupBegin => "GroupBegin".to_string(),
         TokenType::GroupEnd => "GroupEnd".to_string(),
         TokenType::Integer => "Integer".to_string(),
+        TokenType::Function => "Function".to_string(),
         _ => "None".to_string(),
     }
 }

@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use log::info;
+use log::{info, warn};
 
 pub mod io;
 
@@ -36,7 +36,7 @@ impl Lexer {
     }
 
     pub fn consume(&mut self) -> Token {
-        // warn!("{}", self.peek().token_type); // debug logging
+        warn!("{}", self.peek().token_type); // debug logging
         self.tokens
             .pop()
             .unwrap_or(Token::new_blank(TokenType::EOF))

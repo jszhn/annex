@@ -1,0 +1,39 @@
+Scope:
+  Array Declaration:
+    Specifier: var
+    Type: i32
+    Size:
+      Constant: int(10)
+    Identifier: arr
+  Scalar Declaration:
+    Specifier: var
+    Type: i32
+    Identifier: x
+  Scalar Declaration:
+    Specifier: const
+    Type: u32
+    Identifier: addr
+  Array Declaration:
+    Specifier: var
+    Type: i32
+    Size:
+      Constant: int(2)
+    Identifier: y
+  Function: process_array
+  Return type: i32
+  Parameters:
+    Array Declaration:
+      Specifier: var
+      Type: i32
+      Size:
+        Constant: int(100)
+      Identifier: input
+  Body:
+    Scope:
+      Return:
+        Binary Operation:
+        Operator: []
+        Left:
+          Value: input
+        Right:
+          Constant: int(50)

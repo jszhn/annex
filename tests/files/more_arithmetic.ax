@@ -1,0 +1,10 @@
+fn main {} void {
+    var i32 x = 1;
+    var i32 y = 1;
+    const u32 upper = 15;
+
+    for {i = 0; i < upper; i = i + 1} {
+        x = x + y;
+        y = x * i;
+    }
+}

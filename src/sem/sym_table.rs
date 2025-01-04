@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::ast::{ParamNode, Type};
+use crate::ast::types::{ParamNode, Type};
 
 /// FIFO stack-based symbol table implementation, for entering and exiting program scopes.
 pub struct ScopedSymTable {

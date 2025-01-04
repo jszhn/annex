@@ -116,7 +116,7 @@ fn construct_expr(tokens: &mut Lexer, min_power: usize) -> Result<ParseNode, Par
         match next_token_type {
             TokenType::GroupEnd => match next_token.lexeme.as_deref() {
                 Some("]") | Some("}") => {
-                    // info!("Encountered group end, exiting from construct_expr");
+                    info!("Encountered group end, exiting from construct_expr");
                     break;
                 }
                 _ => return Err(ParserError::new("unexpected group end token")),
@@ -436,7 +436,6 @@ fn construct_control(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
             Ok(ParseNode::Control(node))
         }
         Some("while") => {
-            _ = tokens.consume();
             check_starting_bracket(tokens, "while");
             let cond = construct_expr(tokens, 0)?;
             check_ending_bracket(tokens, "while");
@@ -451,13 +450,15 @@ fn construct_control(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
             Ok(ParseNode::While(node))
         }
         Some("for") => {
-            _ = tokens.consume();
             check_starting_bracket(tokens, "for");
             let pre = construct_expr(tokens, 0)?;
+            info!("for loop initialiser parsed");
             assert_eq!(tokens.consume().lexeme.as_deref(), Some(";"));
             let cond = construct_expr(tokens, 0)?;
+            info!("for loop condition parsed");
             assert_eq!(tokens.consume().lexeme.as_deref(), Some(";"));
             let post = construct_expr(tokens, 0)?;
+            info!("for loop post-iteration parsed");
             check_ending_bracket(tokens, "for");
 
             // then
@@ -510,13 +511,18 @@ fn construct_group_expr(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
                 ))
             }
             TokenType::Type | TokenType::Separator => {
+                error!("Found token {}", next.lexeme.unwrap());
                 return Err(ParserError::new("illegal expression. Misplaced token type"));
             }
             TokenType::Integer
             | TokenType::Decimal
             | TokenType::Identifier
             | TokenType::Operator
-            | TokenType::Boolean => construct_expr(tokens, 0)?,
+            | TokenType::Boolean => {
+                let result = construct_expr(tokens, 0)?;
+                tokens.consume();
+                result
+            }
             TokenType::Return => construct_return(tokens)?,
             TokenType::None => {
                 return Err(ParserError::new(
@@ -524,9 +530,10 @@ fn construct_group_expr(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
                 ))
             }
             TokenType::EOF => {
-                return Err(ParserError::new(
-                    "parser reached end of file before function body closing bracket",
-                ))
+                break;
+                // return Err(ParserError::new(
+                //     "parser reached end of file before function body closing bracket",
+                // ))
             }
             TokenType::Control => construct_control(tokens)?,
             TokenType::GroupEnd => {
@@ -556,4 +563,53 @@ fn check_ending_bracket(tokens: &mut Lexer, stmt_type: &str) {
         "expected a closing bracket for {} statement",
         stmt_type
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use std::error::Error;
+    use std::iter::zip;
+
+    // general testing approach is to compare printing in stdout
+    use crate::lexer::Lexer;
+    use crate::parse::Parser;
+
+    #[test]
+    fn parse_test() -> Result<(), Box<dyn Error>> {
+        let input_paths = vec![
+            "tests/files/process_array.ax",
+            "tests/files/more_arithmetic.ax",
+        ];
+        let expected_paths = vec![
+            "tests/files/process_array.expected",
+            "tests/files/more_arithmetic_parse.expected",
+        ];
+
+        for (input, expected) in zip(input_paths, expected_paths) {
+            test(input, expected)?;
+        }
+        Ok(())
+    }
+
+    fn test(input_path: &str, expected_path: &str) -> Result<(), Box<dyn Error>> {
+        let input_file = std::fs::read_to_string(input_path)?;
+        let expected_file = std::fs::read_to_string(expected_path)?;
+
+        let tokens = Lexer::new(input_file)?;
+        let parse_tree = Parser::new(tokens)?;
+
+        let output = parse_tree.print(false);
+        let actual_lines: Vec<&str> = output
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            .collect();
+        let expected_lines: Vec<&str> = expected_file
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            .collect();
+
+        assert_eq!(actual_lines, expected_lines);
+
+        Ok(())
+    }
 }
