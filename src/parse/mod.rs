@@ -6,7 +6,7 @@ use crate::lexer::{Lexer, Token, TokenType};
 use crate::parse::structs::*;
 use crate::parse::util::ParserError;
 
-mod structs;
+pub mod structs;
 mod util;
 
 pub struct Parser {
