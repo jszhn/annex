@@ -12,7 +12,7 @@ param_list: (param (',' param)*)? ;
 param: type ID;
 
 scalar_decl: ('const' | 'var' | 'vol') type ID ';';
-array_decl: ('const' | 'var' | 'vol') type '[' expr ']' ID ';';
+array_decl: ('const' | 'var' | 'vol') type '[' int_const ']' ID ';';
 
 type: var_type | array_type;
 array_type: var_type '[' expr ']';

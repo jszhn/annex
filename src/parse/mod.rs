@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use log::info;
+use log::{error, info, warn};
 
 use crate::lexer::{Lexer, Token, TokenType};
 use crate::parse::util::ParserError;
@@ -37,10 +37,14 @@ fn parse_global_scope(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
         let stmt = match next.token_type {
             TokenType::Function => construct_func(tokens)?,
             TokenType::Specifier => construct_decl(tokens, false)?,
-            _ => return Err(ParserError::new("Illegal program statement")),
+            _ => {
+                error!("Found illegal token type: {}", next.token_type);
+                return Err(ParserError::new("Illegal program statement"));
+            }
         };
         node.push_body(stmt)?;
     }
+    tokens.consume();
     Ok(node)
 }
 
@@ -65,7 +69,7 @@ fn construct_expr(tokens: &mut Lexer, min_power: usize) -> Result<ParseNode, Par
             let val = match value.as_str() {
                 "true" => true,
                 "false" => false,
-                _ => return Err(ParserError::new("Error: Invalid boolean value")),
+                _ => return Err(ParserError::new("Invalid boolean value")),
             };
             ParseNode::Constant(ConstantNode::Bool(val))
         }
@@ -82,7 +86,7 @@ fn construct_expr(tokens: &mut Lexer, min_power: usize) -> Result<ParseNode, Par
             ParseNode::Constant(ConstantNode::Float(val))
         }
         TokenType::Operator => {
-            let ((), r_bp) = pre_binding_power(&value)?;
+            let ((), r_bp) = pre_binding_power(&value).unwrap_or_default();
             let rhs = construct_expr(tokens, r_bp)?;
             ParseNode::Unary(UnaryNode::new(token.clone(), rhs))
         }
@@ -95,37 +99,42 @@ fn construct_expr(tokens: &mut Lexer, min_power: usize) -> Result<ParseNode, Par
                 );
                 lhs
             }
-            _ => {
-                return Err(ParserError::new(
-                    "Error: possibly incorrect group begin placement",
-                ))
-            }
+            _ => return Err(ParserError::new("possibly incorrect group begin placement")),
         },
-        _ => return Err(ParserError::new("Error: unsupported parser type.")),
+        _ => {
+            error!("Found token type {}", token.token_type);
+            return Err(ParserError::new("unsupported parser type."));
+        }
     };
 
     loop {
         let next_token = tokens.peek();
         let next_token_type = next_token.token_type;
-        let next_token_lexeme: Option<String> = match next_token_type {
-            TokenType::EOF => break,
-            TokenType::Separator => {
-                if let Some(val) = next_token.lexeme {
-                    if val == ";" {
-                        tokens.consume();
-                        break;
-                    } else {
-                        // to implement
-                        break;
-                    }
-                } else {
+
+        match next_token_type {
+            TokenType::GroupEnd => match next_token.lexeme.as_deref() {
+                Some("]") | Some("}") => {
+                    info!("Encountered group end, exiting from construct_expr");
                     break;
                 }
+                _ => return Err(ParserError::new("unexpected group end token")),
+            },
+            TokenType::Separator => {
+                if let Some(val) = &next_token.lexeme {
+                    match val.as_str() {
+                        ";" | "," => break, // let caller handle consuming
+                        _ => return Err(ParserError::new("unexpected separator")),
+                    }
+                }
             }
+            TokenType::EOF => break,
+            _ => {}
+        }
+
+        let next_token_lexeme: Option<String> = match next_token_type {
             TokenType::GroupBegin => {
                 match next_token.lexeme.as_deref() {
                     Some("[") => {
-                        // array de-reference
                         let (l_bp, r_bp) = (36, 37);
                         if l_bp < min_power {
                             break;
@@ -134,35 +143,27 @@ fn construct_expr(tokens: &mut Lexer, min_power: usize) -> Result<ParseNode, Par
                         let index = construct_expr(tokens, r_bp)?;
                         assert_eq!(tokens.consume().lexeme.as_deref(), Some("]"));
 
+                        info!("Parser found array access");
                         lhs = ParseNode::Binary(BinaryNode::new(
                             Token::new(TokenType::Operator, "[]".to_string()),
                             lhs,
                             index,
-                        ))
+                        ));
+                        continue;
                     }
                     Some("(") => {
-                        // function call
                         lhs = parse_func_call(tokens, value)?;
+                        continue;
                     }
                     _ => break,
-                }
-                tokens.peek().lexeme.clone()
-            }
-            TokenType::GroupEnd => {
-                if let Some(val) = &next_token.lexeme {
-                    match val.as_str() {
-                        "}" => break,
-                        _ => tokens.peek().lexeme.clone(),
-                    }
-                } else {
-                    return Err(ParserError::new("Bad match arm."));
                 }
             }
             TokenType::Operator => tokens.peek().lexeme.clone(),
             _ => {
+                warn!("{}", next_token_type);
                 return Err(ParserError::new(
                     "Bad, unsupported, or unrecognised lexer value.",
-                ))
+                ));
             }
         };
 
@@ -218,26 +219,12 @@ fn set_binding_power(op_str: &String) -> Option<(usize, usize)> {
 }
 
 /// Pratt parsing binding power for unary pre-operations.
-fn pre_binding_power(op_str: &String) -> Result<((), usize), ParserError> {
+fn pre_binding_power(op_str: &String) -> Option<((), usize)> {
     let op = op_str.as_str();
     match op {
-        "+" | "-" => Ok(((), 3)),
-        "~" => Ok(((), 20)),
-        _ => {
-            println!("{}", op_str);
-            return Err(ParserError::new(
-                "Bad, unsupported, or unrecognised lexer operator",
-            ));
-        }
-    }
-}
-
-/// Pratt parsing binding power for array de-references.
-fn post_binding_power(op_str: &String) -> Option<(usize, ())> {
-    let op = op_str.as_str();
-    match op {
-        "[" => Some((36, ())),
-        _ => return None,
+        "+" | "-" => Some(((), 3)),
+        "~" => Some(((), 20)),
+        _ => None,
     }
 }
 
@@ -266,11 +253,11 @@ pub enum ConstantNode {
     Float(f64),
 }
 
-struct FunctionNode {
-    pub(crate) name: Token,
-    pub(crate) return_type: Token,
-    pub(crate) params: Vec<ParseNode>,
-    pub(crate) body: Box<ParseNode>,
+pub struct FunctionNode {
+    pub name: Token,
+    pub return_type: Token,
+    pub params: Vec<ParseNode>,
+    pub body: Box<ParseNode>,
 }
 
 impl FunctionNode {
@@ -296,9 +283,9 @@ impl FunctionNode {
     }
 }
 
-struct FunctionCallNode {
-    pub(crate) function: Box<ParseNode>,
-    pub(crate) args: Vec<ParseNode>,
+pub struct FunctionCallNode {
+    pub function: Box<ParseNode>,
+    pub args: Vec<ParseNode>,
 }
 
 impl FunctionCallNode {
@@ -329,31 +316,34 @@ fn parse_func_call(tokens: &mut Lexer, value: &String) -> Result<ParseNode, Pars
 
 /// Constructs a function node.
 fn construct_func(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
+    info!("Parser found function");
     _ = tokens.consume(); // fn
     let mut node = FunctionNode::new(&tokens.consume());
     assert_eq!(
         tokens.consume().lexeme.as_deref(),
         Some("{"),
-        "Error: function declaration must have parameter list (even if empty)"
+        "function declaration must have parameter list (even if empty)"
     );
 
     // function arguments
-    while tokens.peek().token_type != TokenType::GroupEnd {
+    while tokens.peek().lexeme.as_deref() != Some("}") {
         node.push_param(construct_decl(tokens, true)?);
-        if tokens.peek().token_type == TokenType::Separator {
+        info!("Parsed single function parameter");
+        if tokens.peek().lexeme.as_deref() == Some(",") {
             tokens.consume(); // ,
         }
     }
+    info!("Function arguments parsed");
     assert_eq!(
         tokens.consume().lexeme.as_deref(),
         Some("}"),
-        "Error: parameter list missing closing brackets"
+        "parameter list missing closing brackets"
     );
 
     let return_type = tokens.consume();
     if return_type.token_type != TokenType::Type {
         return Err(ParserError::new(
-            "Error: function must have return type. If no return, use void",
+            "function must have return type. If no return, use void",
         ));
     }
     node.set_return(return_type);
@@ -364,10 +354,10 @@ fn construct_func(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
     Ok(ParseNode::Function(node))
 }
 
-struct BinaryNode {
-    pub(crate) left: Box<ParseNode>,
-    pub(crate) op: Token,
-    pub(crate) right: Box<ParseNode>,
+pub struct BinaryNode {
+    pub left: Box<ParseNode>,
+    pub op: Token,
+    pub right: Box<ParseNode>,
 }
 
 impl BinaryNode {
@@ -380,9 +370,9 @@ impl BinaryNode {
     }
 }
 
-struct UnaryNode {
-    pub(crate) op: Token,
-    pub(crate) operand: Box<ParseNode>,
+pub struct UnaryNode {
+    pub op: Token,
+    pub operand: Box<ParseNode>,
 }
 
 impl UnaryNode {
@@ -394,8 +384,8 @@ impl UnaryNode {
     }
 }
 
-pub(crate) struct Value {
-    pub(crate) lexeme: String,
+pub struct Value {
+    pub lexeme: String,
 }
 
 impl Value {
@@ -406,35 +396,50 @@ impl Value {
     }
 }
 
-struct ScalarDeclNode {
-    pub(crate) specifier: Token,
-    pub(crate) _type: Token,
-    pub(crate) id: String,
+pub struct ScalarDeclNode {
+    pub specifier: Token,
+    pub _type: Token,
+    pub initialiser: Box<Option<ParseNode>>,
+    pub id: String,
 }
 
 impl ScalarDeclNode {
-    fn new(specifier: Token, _type: Token, id: String) -> ScalarDeclNode {
+    fn new(
+        specifier: Token,
+        _type: Token,
+        initialiser: Option<ParseNode>,
+        id: String,
+    ) -> ScalarDeclNode {
         ScalarDeclNode {
             specifier,
             _type,
+            initialiser: Box::new(initialiser),
             id,
         }
     }
 }
 
-struct ArrayDeclNode {
-    pub(crate) specifier: Token,
-    pub(crate) _type: Token,
-    pub(crate) size: Box<ParseNode>,
-    pub(crate) id: String,
+pub struct ArrayDeclNode {
+    pub specifier: Token,
+    pub _type: Token,
+    pub size: Box<ParseNode>,
+    pub initialiser: Box<Option<ParseNode>>,
+    pub id: String,
 }
 
 impl ArrayDeclNode {
-    fn new(specifier: Token, _type: Token, size: ParseNode, id: String) -> ArrayDeclNode {
+    fn new(
+        specifier: Token,
+        _type: Token,
+        initialiser: Option<ParseNode>,
+        size: ParseNode,
+        id: String,
+    ) -> ArrayDeclNode {
         ArrayDeclNode {
             specifier,
             _type,
             size: Box::new(size),
+            initialiser: Box::new(initialiser),
             id,
         }
     }
@@ -443,49 +448,68 @@ impl ArrayDeclNode {
 /// Constructs a {scalar, array} declaration node.
 /// Function flag denotes a function declaration if true.
 fn construct_decl(tokens: &mut Lexer, function: bool) -> Result<ParseNode, ParserError> {
+    info!("Constructing declaration");
     let specifier = tokens.consume();
     let type_token = tokens.consume();
     assert_eq!(
         type_token.token_type,
         TokenType::Type,
-        "Error: after a variable specifier, there must be a type annotation"
+        "after a variable specifier, there must be a type annotation"
     );
 
     // check if array decl
-    return if tokens.peek().lexeme.as_deref() == Some("[") {
+    let result = if tokens.peek().lexeme.as_deref() == Some("[") {
         _ = tokens.consume(); // [
+        info!("Parser found array declaration");
         let size = construct_expr(tokens, 0)?;
+        info!("Parser found array size");
         assert_eq!(
             tokens.consume().lexeme.as_deref(),
             Some("]"),
-            "Error: an array dereference must be closed by a corresponding square bracket"
+            "an array dereference must be closed by a corresponding square bracket"
         );
         let id = tokens.consume();
-        if !function {
-            assert_eq!(
-                tokens.consume().lexeme.as_deref(),
-                Some(";"),
-                "Error: a declaration must end with a semi-colon"
-            );
-        }
-        let node = ArrayDeclNode::new(specifier, type_token, size, id.lexeme.unwrap_or_default());
+        assert_eq!(id.token_type, TokenType::Identifier);
+
+        let init = if !function {
+            _ = tokens.consume(); // =
+            Some(construct_expr(tokens, 0)?)
+        } else {
+            None
+        };
+        let node = ArrayDeclNode::new(
+            specifier,
+            type_token,
+            init,
+            size,
+            id.lexeme.unwrap_or_default(),
+        );
         Ok(ParseNode::ArrDecl(node))
     } else {
         let id = tokens.consume();
-        if !function {
-            assert_eq!(
-                tokens.consume().lexeme.as_deref(),
-                Some(";"),
-                "Error: a declaration must end with a semi-colon"
-            );
-        }
-        let node = ScalarDeclNode::new(specifier, type_token, id.lexeme.unwrap_or_default());
+        assert_eq!(id.token_type, TokenType::Identifier);
+        let init = if !function {
+            _ = tokens.consume(); // =
+            Some(construct_expr(tokens, 0)?)
+        } else {
+            None
+        };
+        let node = ScalarDeclNode::new(specifier, type_token, init, id.lexeme.unwrap_or_default());
         Ok(ParseNode::ScalarDecl(node))
-    };
+    }?;
+
+    if !function {
+        assert_eq!(
+            tokens.consume().lexeme.as_deref(),
+            Some(";"),
+            "declaration must end with a semicolon"
+        );
+    }
+    Ok(result)
 }
 
-struct ReturnNode {
-    pub(crate) expr: Option<Box<ParseNode>>,
+pub struct ReturnNode {
+    pub expr: Option<Box<ParseNode>>,
 }
 
 impl ReturnNode {
@@ -508,18 +532,26 @@ fn construct_return(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
             assert_eq!(
                 tokens.consume().lexeme.as_deref(),
                 Some(";"),
-                "Error: invalid separator used for void return. Only semi-colons are permitted for void returns"
+                "invalid separator used for void return. Only semi-colons are permitted for void returns"
             );
             None
         }
-        _ => Some(construct_expr(tokens, 0)?),
+        _ => {
+            let result = Some(construct_expr(tokens, 0)?);
+            assert_eq!(
+                tokens.consume().lexeme.as_deref(),
+                Some(";"),
+                "invalid separator. lines should end with semi-colons"
+            );
+            result
+        }
     };
     Ok(ParseNode::Return(ReturnNode::new(expr)))
 }
 
-struct BasicControlNode {
-    pub(crate) cond: Box<ParseNode>,
-    pub(crate) then: Box<ParseNode>,
+pub struct BasicControlNode {
+    pub cond: Box<ParseNode>,
+    pub then: Box<ParseNode>,
 }
 
 impl BasicControlNode {
@@ -531,10 +563,10 @@ impl BasicControlNode {
     }
 }
 
-struct ControlNode {
-    pub(crate) _if: BasicControlNode,
-    pub(crate) elif: Option<Vec<BasicControlNode>>,
-    pub(crate) el: Option<Box<ParseNode>>,
+pub struct ControlNode {
+    pub _if: BasicControlNode,
+    pub elif: Option<Vec<BasicControlNode>>,
+    pub el: Option<Box<ParseNode>>,
 }
 
 impl ControlNode {
@@ -557,9 +589,9 @@ impl ControlNode {
     }
 }
 
-struct WhileNode {
-    pub(crate) cond: Box<ParseNode>,
-    pub(crate) then: Box<ParseNode>,
+pub struct WhileNode {
+    pub cond: Box<ParseNode>,
+    pub then: Box<ParseNode>,
 }
 
 impl WhileNode {
@@ -571,11 +603,11 @@ impl WhileNode {
     }
 }
 
-struct ForNode {
-    pub(crate) pre: Box<ParseNode>,
-    pub(crate) cond: Box<ParseNode>,
-    pub(crate) post: Box<ParseNode>,
-    pub(crate) then: Box<ParseNode>,
+pub struct ForNode {
+    pub pre: Box<ParseNode>,
+    pub cond: Box<ParseNode>,
+    pub post: Box<ParseNode>,
+    pub then: Box<ParseNode>,
 }
 
 impl ForNode {
@@ -654,13 +686,13 @@ fn construct_control(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
         }
         Some("continue") | Some("break") => Ok(ParseNode::LoopControl(LoopControlNode::new(token))),
         _ => Err(ParserError::new(
-            "Error: unknown control/loop statement or mismatched order",
+            "unknown control/loop statement or mismatched order",
         )),
     };
 }
 
-struct LoopControlNode {
-    pub(crate) _type: Token,
+pub struct LoopControlNode {
+    pub _type: Token,
 }
 
 impl LoopControlNode {
@@ -669,8 +701,8 @@ impl LoopControlNode {
     }
 }
 
-struct ScopeNode {
-    pub(crate) contents: Vec<ParseNode>,
+pub struct ScopeNode {
+    pub contents: Vec<ParseNode>,
 }
 
 impl ScopeNode {
@@ -712,17 +744,15 @@ fn construct_group_expr(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
             TokenType::Specifier => construct_decl(tokens, false)?,
             TokenType::GroupBegin => match next.lexeme.as_deref() {
                 Some("{") => construct_group_expr(tokens)?,
-                _ => return Err(ParserError::new("Error: illegal group begin")),
+                _ => return Err(ParserError::new("illegal group begin")),
             },
             TokenType::Function => {
                 return Err(ParserError::new(
-                    "Error: illegal expression. Cannot define a function within another function",
+                    "illegal expression. Cannot define a function within another function",
                 ))
             }
             TokenType::Type | TokenType::Separator => {
-                return Err(ParserError::new(
-                    "Error: illegal expression. Misplaced token type",
-                ));
+                return Err(ParserError::new("illegal expression. Misplaced token type"));
             }
             TokenType::Integer
             | TokenType::Decimal
@@ -737,7 +767,7 @@ fn construct_group_expr(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
             }
             TokenType::EOF => {
                 return Err(ParserError::new(
-                    "Error: parser reached end of file before function body closing bracket",
+                    "parser reached end of file before function body closing bracket",
                 ))
             }
             TokenType::Control => construct_control(tokens)?,
@@ -756,7 +786,7 @@ fn check_starting_bracket(tokens: &mut Lexer, stmt_type: &str) {
     assert_eq!(
         tokens.consume().lexeme.as_deref(),
         Some("{"),
-        "Error: expected an opening bracket for {} statement",
+        "expected an opening bracket for {} statement",
         stmt_type
     );
 }
@@ -765,7 +795,7 @@ fn check_ending_bracket(tokens: &mut Lexer, stmt_type: &str) {
     assert_eq!(
         tokens.consume().lexeme.as_deref(),
         Some("}"),
-        "Error: expected a closing bracket for {} statement",
+        "expected a closing bracket for {} statement",
         stmt_type
     );
 }

@@ -3,16 +3,20 @@ use crate::parse::{ConstantNode, ParseNode, Parser, Value};
 
 mod util;
 
-struct Ast {
+pub struct Ast {
     head: AstNode,
 }
 
 impl Ast {
-    fn from_parse_tree(parse_tree: Parser) -> Result<Ast, AstError> {
+    pub fn new(parse_tree: Parser) -> Result<Ast, AstError> {
         let parse_head = parse_tree.head;
         Ok(Ast {
             head: convert_parse_tree(parse_head)?,
         })
+    }
+
+    pub fn get_head_ref(&self) -> &AstNode {
+        &self.head
     }
 }
 
@@ -21,7 +25,7 @@ fn convert_parse_tree(parse_node: ParseNode) -> Result<AstNode, AstError> {
         ParseNode::Function(node) => {
             let name = node.name.lexeme.unwrap_or_default();
             let return_type =
-                Type::from_token(stringify!(node.return_type.lexeme.unwrap_or_default()))
+                Type::from_token(node.return_type.lexeme.unwrap_or_default().as_str())
                     .ok_or_else(|| AstError::new("Error: invalid return type"))?;
             let params = node
                 .params
@@ -207,7 +211,7 @@ fn convert_parse_tree(parse_node: ParseNode) -> Result<AstNode, AstError> {
                 .into_iter()
                 .map(convert_parse_tree)
                 .collect::<Result<Vec<_>, _>>()?;
-            Ok(AstNode::Block(stmts))
+            Ok(AstNode::Block(BlockNode { elems: stmts }))
         }
         ParseNode::LoopControl(node) => match node._type.lexeme.as_deref() {
             Some("continue") => Ok(AstNode::Continue),
@@ -392,7 +396,7 @@ pub enum AstNode {
     Return(Option<Box<AstNode>>),
     Break,
     Continue,
-    Block(Vec<AstNode>),
+    Block(BlockNode),
     VarDecl(VarDeclNode),
     ArrDecl(ArrDeclNode),
     Identifier(String),
@@ -400,63 +404,73 @@ pub enum AstNode {
     Arr(ArrAccessNode),
 }
 
-struct FunctionNode {
-    name: String,
-    params: Vec<ParamNode>,
-    return_type: Type,
-    body: Box<AstNode>,
+pub struct FunctionNode {
+    pub name: String,
+    pub params: Vec<ParamNode>,
+    pub return_type: Type,
+    pub body: Box<AstNode>,
 }
 
-struct FunctionCallNode {
+pub struct FunctionCallNode {
     name: String,
     args: Vec<AstNode>,
 }
 
-struct ParamNode {
+pub struct ParamNode {
     name: String,
     typ: Type,
     spec: StorageClass,
     size: Option<Box<AstNode>>,
 }
 
-struct BinaryNode {
+pub struct BinaryNode {
     op: BinaryOperator,
     left: Box<AstNode>,
     right: Box<AstNode>,
 }
 
-struct UnaryNode {
+pub struct UnaryNode {
     op: UnaryOperator,
     expr: Box<AstNode>,
 }
 
-struct IfNode {
+pub struct IfNode {
     condition: Box<AstNode>,
     then_branch: Box<AstNode>,
     elif_branches: Vec<(AstNode, AstNode)>,
     else_branch: Option<Box<AstNode>>,
 }
 
-struct WhileNode {
+pub struct WhileNode {
     condition: Box<AstNode>,
     body: Box<AstNode>,
 }
 
-struct ForNode {
+pub struct ForNode {
     init: Box<AstNode>,
     condition: Box<AstNode>,
     update: Box<AstNode>,
     body: Box<AstNode>,
 }
 
-struct VarDeclNode {
+pub struct BlockNode {
+    elems: Vec<AstNode>,
+}
+
+impl BlockNode {
+    pub fn get_elems_ref(&self) -> &Vec<AstNode> {
+        &self.elems
+    }
+}
+
+pub struct VarDeclNode {
     storage: StorageClass,
     name: String,
     typ: Type,
     initialiser: Option<Box<AstNode>>,
 }
 
-struct ArrDeclNode {
+pub struct ArrDeclNode {
     storage: StorageClass,
     name: String,
     typ: Type,
@@ -464,7 +478,7 @@ struct ArrDeclNode {
     initialiser: Option<Box<AstNode>>,
 }
 
-struct ArrAccessNode {
+pub struct ArrAccessNode {
     name: String,
     access: Box<AstNode>,
 }

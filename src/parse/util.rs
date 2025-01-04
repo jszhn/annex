@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Display, Formatter};
 
-use crate::parse::{ConstantNode, ParseNode};
+use crate::parse::{ConstantNode, ParseNode, Parser};
 
 pub struct ParserError {
     message: String,
@@ -30,13 +30,19 @@ impl Display for ParserError {
 
 impl std::error::Error for ParserError {}
 
+impl Parser {
+    pub fn print(&self) {
+        self.head.print()
+    }
+}
+
 impl ParseNode {
     pub fn print(&self) {
         self.print_with_indent(0);
     }
 
     fn print_with_indent(&self, indent: usize) {
-        let indent_str = "  ".repeat(indent);
+        let mut indent_str = "  ".repeat(indent); // really shouldn't be mutable, fix for decls
 
         match self {
             ParseNode::Function(node) => {
@@ -44,6 +50,11 @@ impl ParseNode {
                     "{}Function: {}",
                     indent_str,
                     node.name.lexeme.as_ref().unwrap()
+                );
+                println!(
+                    "{}Return type: {}",
+                    indent_str,
+                    node.return_type.lexeme.as_ref().unwrap()
                 );
                 println!("{}Parameters:", indent_str);
                 for param in &node.params {
@@ -86,6 +97,7 @@ impl ParseNode {
             }
             ParseNode::ScalarDecl(node) => {
                 println!("{}Scalar Declaration:", indent_str);
+                indent_str.push_str("  ");
                 println!(
                     "{}Specifier: {}",
                     indent_str,
@@ -97,9 +109,12 @@ impl ParseNode {
                     node._type.lexeme.as_ref().unwrap()
                 );
                 println!("{}Identifier: {}", indent_str, node.id);
+                indent_str.pop(); // not very elegant
+                indent_str.pop();
             }
             ParseNode::ArrDecl(node) => {
                 println!("{}Array Declaration:", indent_str);
+                indent_str.push_str("  ");
                 println!(
                     "{}Specifier: {}",
                     indent_str,
@@ -111,14 +126,10 @@ impl ParseNode {
                     node._type.lexeme.as_ref().unwrap()
                 );
                 println!("{}Size:", indent_str);
-                node.size.print_with_indent(indent + 1);
+                node.size.print_with_indent(indent + 2);
                 println!("{}Identifier: {}", indent_str, node.id);
-            }
-            ParseNode::Expr(node) => {
-                println!("{}Expression: {}", indent_str, node.lexeme);
-                for child in &node.children {
-                    child.print_with_indent(indent + 1);
-                }
+                indent_str.pop(); // not very elegant
+                indent_str.pop();
             }
             ParseNode::Return(node) => {
                 println!("{}Return:", indent_str);

@@ -1,6 +1,7 @@
-use fs_err as fs;
-use log::info;
 use std::error::Error;
+
+use fs_err as fs;
+use log::{info, warn};
 
 pub mod io;
 
@@ -36,6 +37,7 @@ impl Lexer {
     }
 
     pub fn consume(&mut self) -> Token {
+        // warn!("{}", self.peek().token_type); // debug logging
         self.tokens
             .pop()
             .unwrap_or(Token::new_blank(TokenType::EOF))
@@ -143,9 +145,8 @@ fn tokenise(file: String) -> Result<Vec<Token>, Box<dyn Error>> {
                 // clear existing multichar lexeme
                 tokens.push(multichar_token(&buf));
                 buf.clear();
-            } else {
-                tokens.push(Token::new(token_type, c.to_string()));
             }
+            tokens.push(Token::new(token_type, c.to_string()));
         }
     }
     tokens.push(Token::new_blank(TokenType::EOF));
@@ -182,28 +183,33 @@ fn multichar_token(token: &String) -> Token {
 }
 
 #[cfg(test)]
-fn basic_test() {
-    let files: Vec<&str> = vec!["tests/files/arithmetic.ax"];
-    let tokens: Vec<Vec<Token>> = vec![vec![
-        Token::new_blank(TokenType::EOF),
-        Token::new(TokenType::Separator, ";".to_string()),
-        Token::new(TokenType::Integer, "555".to_string()),
-        Token::new(TokenType::Separator, ".".to_string()),
-        Token::new(TokenType::Identifier, "3".to_string()),
-        Token::new(TokenType::Operator, "*".to_string()),
-        Token::new(TokenType::Identifier, "10".to_string()),
-        Token::new(TokenType::Operator, "+".to_string()),
-        Token::new(TokenType::Identifier, "annex".to_string()),
-    ]];
+mod tests {
+    use super::*;
 
-    for (i, file) in files.iter().enumerate() {
-        let contents = fs::read_to_string(file).unwrap();
-        let mut lex = Lexer::new(contents).expect("err: lexical analysis failed!");
-        lex.print_all();
-        let test_tokens = lex.get_ref();
-        for j in 0..tokens.len() {
-            assert_eq!(tokens[i][j].token_type, test_tokens[j].token_type);
-            assert_eq!(tokens[i][j].lexeme, test_tokens[j].lexeme);
+    #[test]
+    fn basic_test() {
+        let files: Vec<&str> = vec!["tests/files/arithmetic.ax"];
+        let tokens: Vec<Vec<Token>> = vec![vec![
+            Token::new_blank(TokenType::EOF),
+            Token::new(TokenType::Separator, ";".to_string()),
+            Token::new(TokenType::Integer, "555".to_string()),
+            Token::new(TokenType::Separator, ".".to_string()),
+            Token::new(TokenType::Identifier, "3".to_string()),
+            Token::new(TokenType::Operator, "*".to_string()),
+            Token::new(TokenType::Identifier, "10".to_string()),
+            Token::new(TokenType::Operator, "+".to_string()),
+            Token::new(TokenType::Identifier, "annex".to_string()),
+        ]];
+
+        for (i, file) in files.iter().enumerate() {
+            let contents = fs::read_to_string(file).unwrap();
+            let mut lex = Lexer::new(contents).expect("err: lexical analysis failed!");
+            lex.print_all();
+            let test_tokens = lex.get_ref();
+            for j in 0..tokens.len() {
+                assert_eq!(tokens[i][j].token_type, test_tokens[j].token_type);
+                assert_eq!(tokens[i][j].lexeme, test_tokens[j].lexeme);
+            }
         }
     }
 }
