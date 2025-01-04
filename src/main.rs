@@ -21,9 +21,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let file_contents = fs::read_to_string(file_path)?;
     let tokens = lexer::Lexer::new(file_contents)?;
     let parse_tree = parse::Parser::new(tokens)?;
-    parse_tree.print();
-    let abstract_syntax_tree = ast::Ast::new(parse_tree)?;
-    _ = abstract_syntax_tree.sem_analysis()?;
+    let as_tree = ast::Ast::new(parse_tree)?;
+    as_tree.sem_analysis()?;
     // let asm = gen::Assembly::new(abstract_syntax_tree)?;
     Ok(())
 }

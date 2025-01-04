@@ -1,7 +1,6 @@
 use std::error::Error;
 
-use fs_err as fs;
-use log::{info, warn};
+use log::info;
 
 pub mod io;
 
@@ -198,11 +197,11 @@ mod tests {
             Token::new(TokenType::Operator, "*".to_string()),
             Token::new(TokenType::Identifier, "10".to_string()),
             Token::new(TokenType::Operator, "+".to_string()),
-            Token::new(TokenType::Identifier, "annex".to_string()),
+            Token::new(TokenType::Identifier, "id".to_string()),
         ]];
 
         for (i, file) in files.iter().enumerate() {
-            let contents = fs::read_to_string(file).unwrap();
+            let contents = std::fs::read_to_string(file).unwrap();
             let mut lex = Lexer::new(contents).expect("err: lexical analysis failed!");
             lex.print_all();
             let test_tokens = lex.get_ref();

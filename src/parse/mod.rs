@@ -3,8 +3,10 @@ use std::error::Error;
 use log::{error, info, warn};
 
 use crate::lexer::{Lexer, Token, TokenType};
+use crate::parse::structs::*;
 use crate::parse::util::ParserError;
 
+mod structs;
 mod util;
 
 pub struct Parser {
@@ -114,7 +116,7 @@ fn construct_expr(tokens: &mut Lexer, min_power: usize) -> Result<ParseNode, Par
         match next_token_type {
             TokenType::GroupEnd => match next_token.lexeme.as_deref() {
                 Some("]") | Some("}") => {
-                    info!("Encountered group end, exiting from construct_expr");
+                    // info!("Encountered group end, exiting from construct_expr");
                     break;
                 }
                 _ => return Err(ParserError::new("unexpected group end token")),
@@ -143,7 +145,7 @@ fn construct_expr(tokens: &mut Lexer, min_power: usize) -> Result<ParseNode, Par
                         let index = construct_expr(tokens, r_bp)?;
                         assert_eq!(tokens.consume().lexeme.as_deref(), Some("]"));
 
-                        info!("Parser found array access");
+                        // info!("Parser found array access");
                         lhs = ParseNode::Binary(BinaryNode::new(
                             Token::new(TokenType::Operator, "[]".to_string()),
                             lhs,
@@ -253,50 +255,6 @@ pub enum ConstantNode {
     Float(f64),
 }
 
-pub struct FunctionNode {
-    pub name: Token,
-    pub return_type: Token,
-    pub params: Vec<ParseNode>,
-    pub body: Box<ParseNode>,
-}
-
-impl FunctionNode {
-    fn new(name: &Token) -> FunctionNode {
-        FunctionNode {
-            name: name.clone(),
-            return_type: Token::new(TokenType::Type, "void".to_string()),
-            params: Vec::new(),
-            body: Box::new(ParseNode::None),
-        }
-    }
-
-    fn set_body(&mut self, scope: ParseNode) {
-        self.body = Box::new(scope);
-    }
-
-    fn push_param(&mut self, param: ParseNode) {
-        self.params.push(param);
-    }
-
-    fn set_return(&mut self, typ: Token) {
-        self.return_type = typ;
-    }
-}
-
-pub struct FunctionCallNode {
-    pub function: Box<ParseNode>,
-    pub args: Vec<ParseNode>,
-}
-
-impl FunctionCallNode {
-    fn new(func: ParseNode, args: Vec<ParseNode>) -> FunctionCallNode {
-        FunctionCallNode {
-            function: Box::new(func),
-            args,
-        }
-    }
-}
-
 fn parse_func_call(tokens: &mut Lexer, value: &String) -> Result<ParseNode, ParserError> {
     _ = tokens.consume(); // (
     let mut args = Vec::new();
@@ -316,7 +274,7 @@ fn parse_func_call(tokens: &mut Lexer, value: &String) -> Result<ParseNode, Pars
 
 /// Constructs a function node.
 fn construct_func(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
-    info!("Parser found function");
+    // info!("Parser found function");
     _ = tokens.consume(); // fn
     let mut node = FunctionNode::new(&tokens.consume());
     assert_eq!(
@@ -328,12 +286,12 @@ fn construct_func(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
     // function arguments
     while tokens.peek().lexeme.as_deref() != Some("}") {
         node.push_param(construct_decl(tokens, true)?);
-        info!("Parsed single function parameter");
+        // info!("Parsed single function parameter");
         if tokens.peek().lexeme.as_deref() == Some(",") {
             tokens.consume(); // ,
         }
     }
-    info!("Function arguments parsed");
+    // info!("Function arguments parsed");
     assert_eq!(
         tokens.consume().lexeme.as_deref(),
         Some("}"),
@@ -354,101 +312,10 @@ fn construct_func(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
     Ok(ParseNode::Function(node))
 }
 
-pub struct BinaryNode {
-    pub left: Box<ParseNode>,
-    pub op: Token,
-    pub right: Box<ParseNode>,
-}
-
-impl BinaryNode {
-    fn new(op: Token, left: ParseNode, right: ParseNode) -> BinaryNode {
-        BinaryNode {
-            left: Box::new(left),
-            op,
-            right: Box::new(right),
-        }
-    }
-}
-
-pub struct UnaryNode {
-    pub op: Token,
-    pub operand: Box<ParseNode>,
-}
-
-impl UnaryNode {
-    fn new(op: Token, operand: ParseNode) -> UnaryNode {
-        UnaryNode {
-            op,
-            operand: Box::new(operand),
-        }
-    }
-}
-
-pub struct Value {
-    pub lexeme: String,
-}
-
-impl Value {
-    fn new(val: &String) -> Value {
-        Value {
-            lexeme: val.clone(),
-        }
-    }
-}
-
-pub struct ScalarDeclNode {
-    pub specifier: Token,
-    pub _type: Token,
-    pub initialiser: Box<Option<ParseNode>>,
-    pub id: String,
-}
-
-impl ScalarDeclNode {
-    fn new(
-        specifier: Token,
-        _type: Token,
-        initialiser: Option<ParseNode>,
-        id: String,
-    ) -> ScalarDeclNode {
-        ScalarDeclNode {
-            specifier,
-            _type,
-            initialiser: Box::new(initialiser),
-            id,
-        }
-    }
-}
-
-pub struct ArrayDeclNode {
-    pub specifier: Token,
-    pub _type: Token,
-    pub size: Box<ParseNode>,
-    pub initialiser: Box<Option<ParseNode>>,
-    pub id: String,
-}
-
-impl ArrayDeclNode {
-    fn new(
-        specifier: Token,
-        _type: Token,
-        initialiser: Option<ParseNode>,
-        size: ParseNode,
-        id: String,
-    ) -> ArrayDeclNode {
-        ArrayDeclNode {
-            specifier,
-            _type,
-            size: Box::new(size),
-            initialiser: Box::new(initialiser),
-            id,
-        }
-    }
-}
-
 /// Constructs a {scalar, array} declaration node.
 /// Function flag denotes a function declaration if true.
 fn construct_decl(tokens: &mut Lexer, function: bool) -> Result<ParseNode, ParserError> {
-    info!("Constructing declaration");
+    // info!("Constructing declaration");
     let specifier = tokens.consume();
     let type_token = tokens.consume();
     assert_eq!(
@@ -460,9 +327,9 @@ fn construct_decl(tokens: &mut Lexer, function: bool) -> Result<ParseNode, Parse
     // check if array decl
     let result = if tokens.peek().lexeme.as_deref() == Some("[") {
         _ = tokens.consume(); // [
-        info!("Parser found array declaration");
+                              // info!("Parser found array declaration");
         let size = construct_expr(tokens, 0)?;
-        info!("Parser found array size");
+        // info!("Parser found array size");
         assert_eq!(
             tokens.consume().lexeme.as_deref(),
             Some("]"),
@@ -508,22 +375,6 @@ fn construct_decl(tokens: &mut Lexer, function: bool) -> Result<ParseNode, Parse
     Ok(result)
 }
 
-pub struct ReturnNode {
-    pub expr: Option<Box<ParseNode>>,
-}
-
-impl ReturnNode {
-    fn new(expr: Option<ParseNode>) -> ReturnNode {
-        return if expr.is_some() {
-            ReturnNode {
-                expr: Some(Box::new(expr.unwrap())),
-            }
-        } else {
-            ReturnNode { expr: None }
-        };
-    }
-}
-
 fn construct_return(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
     _ = tokens.consume(); // return
     let next = tokens.peek();
@@ -549,76 +400,9 @@ fn construct_return(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
     Ok(ParseNode::Return(ReturnNode::new(expr)))
 }
 
-pub struct BasicControlNode {
-    pub cond: Box<ParseNode>,
-    pub then: Box<ParseNode>,
-}
-
-impl BasicControlNode {
-    fn new(cond: ParseNode, then: ParseNode) -> BasicControlNode {
-        BasicControlNode {
-            cond: Box::new(cond),
-            then: Box::new(then),
-        }
-    }
-}
-
-pub struct ControlNode {
-    pub _if: BasicControlNode,
-    pub elif: Option<Vec<BasicControlNode>>,
-    pub el: Option<Box<ParseNode>>,
-}
-
-impl ControlNode {
-    fn new(cond: ParseNode, then: ParseNode) -> ControlNode {
-        ControlNode {
-            _if: BasicControlNode::new(cond, then),
-            elif: None,
-            el: None,
-        }
-    }
-
-    fn push_elif(&mut self, cond: ParseNode, then: ParseNode) {
-        self.elif
-            .get_or_insert(Vec::new())
-            .push(BasicControlNode::new(cond, then))
-    }
-
-    fn set_else(&mut self, el: ParseNode) {
-        self.el = Some(Box::new(el))
-    }
-}
-
 pub struct WhileNode {
     pub cond: Box<ParseNode>,
     pub then: Box<ParseNode>,
-}
-
-impl WhileNode {
-    fn new(cond: ParseNode, then: ParseNode) -> WhileNode {
-        WhileNode {
-            cond: Box::new(cond),
-            then: Box::new(then),
-        }
-    }
-}
-
-pub struct ForNode {
-    pub pre: Box<ParseNode>,
-    pub cond: Box<ParseNode>,
-    pub post: Box<ParseNode>,
-    pub then: Box<ParseNode>,
-}
-
-impl ForNode {
-    fn new(pre: ParseNode, cond: ParseNode, post: ParseNode, then: ParseNode) -> ForNode {
-        ForNode {
-            pre: Box::new(pre),
-            cond: Box::new(cond),
-            post: Box::new(post),
-            then: Box::new(then),
-        }
-    }
 }
 
 fn construct_control(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
@@ -689,32 +473,6 @@ fn construct_control(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
             "unknown control/loop statement or mismatched order",
         )),
     };
-}
-
-pub struct LoopControlNode {
-    pub _type: Token,
-}
-
-impl LoopControlNode {
-    fn new(_type: Token) -> LoopControlNode {
-        LoopControlNode { _type }
-    }
-}
-
-pub struct ScopeNode {
-    pub contents: Vec<ParseNode>,
-}
-
-impl ScopeNode {
-    fn new() -> ScopeNode {
-        ScopeNode {
-            contents: Vec::new(),
-        }
-    }
-
-    fn push_body(&mut self, node: ParseNode) {
-        self.contents.push(node)
-    }
 }
 
 trait Group {

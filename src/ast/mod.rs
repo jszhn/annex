@@ -1,5 +1,6 @@
 use crate::ast::util::AstError;
-use crate::parse::{ConstantNode, ParseNode, Parser, Value};
+use crate::parse::{ConstantNode, ParseNode, Parser};
+use crate::parse::structs::Value;
 
 mod util;
 

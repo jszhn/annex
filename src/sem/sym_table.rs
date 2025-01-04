@@ -44,13 +44,13 @@ impl<T> SymTable<T> {
 }
 
 pub struct VarEntry {
-    _type: Type,
+    typ: Type,
     is_array: bool,
 }
 
 impl VarEntry {
-    pub fn new(&self, _type: Type, is_array: bool) -> VarEntry {
-        VarEntry { _type, is_array }
+    pub fn new(typ: Type, is_array: bool) -> VarEntry {
+        VarEntry { typ, is_array }
     }
 }
 
