@@ -4,7 +4,6 @@ use std::io::Error;
 use fs_err as fs;
 
 use crate::lexer::{Lexer, Token, TokenType};
-use crate::util;
 
 impl Lexer {
     pub fn print_tokens(&self) {
@@ -36,10 +35,10 @@ impl Token {
     }
 }
 
-impl util::OutputHandler for Vec<Token> {
+impl Lexer {
     fn to_txt(&self, path: String) -> Result<(), Error> {
         let mut output = String::from("");
-        for item in self.iter().rev() {
+        for item in self.tokens.iter().rev() {
             let mut buf = get_token_name(item.token_type);
             if let Some(value) = &item.lexeme {
                 buf.push_str(": ");

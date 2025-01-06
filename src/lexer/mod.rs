@@ -35,13 +35,15 @@ impl Lexer {
         Ok(Lexer { tokens: token_str })
     }
 
+    /// Pops the next token from the stack.
     pub fn consume(&mut self) -> Token {
-        warn!("{}", self.peek().token_type); // debug logging
+        // warn!("{}", self.peek().token_type); // debug logging
         self.tokens
             .pop()
             .unwrap_or(Token::new_blank(TokenType::EOF))
     }
 
+    /// Clones token at the top of the stack.
     pub fn peek(&mut self) -> Token {
         self.tokens
             .last()
@@ -49,6 +51,7 @@ impl Lexer {
             .unwrap_or(Token::new_blank(TokenType::EOF))
     }
 
+    /// Returns reference to token stack.
     pub fn get_ref(&mut self) -> &Vec<Token> {
         return &self.tokens;
     }
@@ -145,7 +148,7 @@ fn tokenise(file: String) -> Result<Vec<Token>, Box<dyn Error>> {
                 tokens.push(multichar_token(&buf));
                 buf.clear();
             }
-            tokens.push(Token::new(token_type, c.to_string()));
+            tokens.push(Token::new(token_type, c.to_string())); // ensures we don't miss tokens
         }
     }
     tokens.push(Token::new_blank(TokenType::EOF));
