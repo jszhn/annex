@@ -6,6 +6,7 @@ use log::error;
 
 pub mod ast;
 mod gen;
+mod ir;
 pub mod lexer;
 mod parse;
 mod sem;
@@ -24,6 +25,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let parse_tree = parse::Parser::new(tokens)?;
     let as_tree = ast::Ast::new(parse_tree)?;
     as_tree.sem_analysis()?;
+    let ir = ir::Inter::new(as_tree)?;
     // let asm = gen::Assembly::new(abstract_syntax_tree)?;
     Ok(())
 }

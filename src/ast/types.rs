@@ -5,7 +5,6 @@ pub enum BinaryOperator {
     Sub,
     Mul,
     Div,
-    Mod,
 
     // Bitwise
     BitAnd,
@@ -38,7 +37,6 @@ impl BinaryOperator {
             "-" => Some(Self::Sub),
             "*" => Some(Self::Mul),
             "/" => Some(Self::Div),
-            "%" => Some(Self::Mod),
             "&" => Some(Self::BitAnd),
             "|" => Some(Self::BitOr),
             "^" => Some(Self::BitXor),

@@ -7,13 +7,14 @@ pub mod sym_table;
 
 impl Ast {
     pub fn sem_analysis(&self) -> Result<(), SemError> {
-        fill_func_table(self)
+        let func_table = fill_func_table(self)?;
+        Ok(())
     }
 }
 
 /// Fills the global function symbol table.
 /// Also performs function declaration-related semantic checks.
-fn fill_func_table(tree: &Ast) -> Result<(), SemError> {
+fn fill_func_table(tree: &Ast) -> Result<SymTable<FuncEntry>, SemError> {
     let head = tree.get_head_ref();
     match head {
         AstNode::Block(prog) => {
@@ -33,7 +34,7 @@ fn fill_func_table(tree: &Ast) -> Result<(), SemError> {
                     func_table.insert(func.name.clone(), entry);
                 }
             }
-            Ok(())
+            Ok(func_table)
         }
         _ => Err(SemError::InternalError(
             "Mismatched abstract syntax tree head node type".to_string(),

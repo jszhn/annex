@@ -1,7 +1,7 @@
 # Annex
 
 *Annex* is a hobbyist imperative, compiled programming language. It compiles to RISC-V assembly and is built in Rust. It
-aims to implement the standard compiler workflow from scratch with minimal dependencies including: lexical analysis,
+aims to implement the standard compiler workflow from scratch with minimal dependencies, including lexical analysis,
 parsing, abstract syntax
 tree generation, semantic analysis, and code generation.
 

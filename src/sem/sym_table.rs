@@ -4,14 +4,50 @@ use crate::ast::types::{ParamNode, Type};
 
 /// FIFO stack-based symbol table implementation, for entering and exiting program scopes.
 pub struct ScopedSymTable {
-    scopes: Vec<SymTable<VarEntry>>,
+    pub scopes: Vec<SymTable<VarEntry>>,
+    num_scopes: u32,
 }
 
 impl ScopedSymTable {
-    fn new() -> ScopedSymTable {
+    pub fn new() -> ScopedSymTable {
         let mut scopes = Vec::new();
         scopes.push(SymTable::new(0));
-        ScopedSymTable { scopes }
+        ScopedSymTable {
+            scopes,
+            num_scopes: 1,
+        }
+    }
+
+    /// Enters new scope, with new symbol table.
+    pub fn enter(&mut self) {
+        self.scopes.push(SymTable::new(self.num_scopes + 1));
+        self.num_scopes += 1;
+    }
+
+    /// Exits current scope. Discards current symbol table.
+    pub fn exit(&mut self) {
+        if self.num_scopes > 1 {
+            self.scopes.pop();
+            self.num_scopes -= 1;
+        }
+    }
+
+    pub fn lookup(&self, key: &String) -> Option<&VarEntry> {
+        for scope in self.scopes.iter().rev() {
+            if let Some(entry) = scope.get_ref(key) {
+                return Some(entry);
+            }
+        }
+        None
+    }
+
+    /// Looks-up the given key in the current scope's symbol table.
+    pub fn lookup_current(&self, key: &String) -> Option<&VarEntry> {
+        let scope = self.scopes.last()?;
+        if let Some(entry) = scope.get_ref(key) {
+            return Some(entry);
+        }
+        None
     }
 }
 
@@ -29,8 +65,8 @@ impl<T> SymTable<T> {
         }
     }
 
-    pub fn get_ref(&self, key: String) -> Option<&T> {
-        self.table.get(&key)
+    pub fn get_ref(&self, key: &String) -> Option<&T> {
+        self.table.get(key)
     }
 
     pub fn contains(&self, key: &String) -> bool {
