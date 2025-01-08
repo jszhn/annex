@@ -128,12 +128,16 @@ fn convert_parse_tree(parse_node: ParseNode) -> Result<AstNode, AstError> {
                 .ok_or_else(|| AstError::new("Invalid storage class"))?;
             let typ = Type::from_token(&node._type.lexeme.unwrap_or_default())
                 .ok_or_else(|| AstError::new("Invalid type"))?;
+            let init = match node.initialiser {
+                Some(n) => Some(Box::new(convert_parse_tree(*n)?)),
+                None => None,
+            };
 
             let node = VarDeclNode {
                 storage,
                 name: node.id,
                 typ,
-                initialiser: None,
+                initialiser: init,
             };
             Ok(AstNode::VarDecl(node))
         }
@@ -143,13 +147,17 @@ fn convert_parse_tree(parse_node: ParseNode) -> Result<AstNode, AstError> {
             let typ = Type::from_token(&node._type.lexeme.unwrap_or_default())
                 .ok_or_else(|| AstError::new("Invalid type"))?;
             let size = convert_parse_tree(*node.size)?;
+            let _ = match node.initialiser {
+                Some(node) => Some(Box::new(convert_parse_tree(*node)?)),
+                None => None,
+            };
 
             let node = ArrDeclNode {
                 storage,
                 name: node.id,
                 typ,
                 size: Box::new(size),
-                initialiser: None,
+                initialiser: None, // replace with init once I figure out how to pull this off
             };
             Ok(AstNode::ArrDecl(node))
         }
@@ -235,7 +243,11 @@ fn convert_parse_tree(parse_node: ParseNode) -> Result<AstNode, AstError> {
                 .map(convert_parse_tree)
                 .collect::<Result<Vec<_>, _>>()?;
 
-            let node = FunctionCallNode { name, args };
+            let node = FunctionCallNode {
+                name,
+                args,
+                return_type: None,
+            };
             Ok(AstNode::FunctionCall(node))
         }
         ParseNode::None => Err(AstError::new(

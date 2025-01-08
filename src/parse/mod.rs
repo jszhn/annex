@@ -50,7 +50,8 @@ fn parse_global_scope(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
     Ok(node)
 }
 
-/// Pratt parsing
+/// Pratt parsing for expressions
+///     https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
 fn construct_expr(tokens: &mut Lexer, min_power: usize) -> Result<ParseNode, ParserError> {
     let token = tokens.consume();
     let Some(value) = &token.lexeme else {

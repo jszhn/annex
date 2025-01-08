@@ -90,7 +90,7 @@ impl Value {
 pub struct ScalarDeclNode {
     pub specifier: Token,
     pub _type: Token,
-    pub initialiser: Box<Option<ParseNode>>,
+    pub initialiser: Option<Box<ParseNode>>,
     pub id: String,
 }
 
@@ -104,7 +104,7 @@ impl ScalarDeclNode {
         ScalarDeclNode {
             specifier,
             _type,
-            initialiser: Box::new(initialiser),
+            initialiser: initialiser.map(|p| Box::new(p)),
             id,
         }
     }
@@ -114,7 +114,7 @@ pub struct ArrayDeclNode {
     pub specifier: Token,
     pub _type: Token,
     pub size: Box<ParseNode>,
-    pub initialiser: Box<Option<ParseNode>>,
+    pub initialiser: Option<Box<ParseNode>>,
     pub id: String,
 }
 
@@ -130,7 +130,7 @@ impl ArrayDeclNode {
             specifier,
             _type,
             size: Box::new(size),
-            initialiser: Box::new(initialiser),
+            initialiser: initialiser.map(|p| Box::new(p)),
             id,
         }
     }
