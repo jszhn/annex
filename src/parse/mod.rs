@@ -63,7 +63,7 @@ fn construct_expr(tokens: &mut Lexer, min_power: usize) -> Result<ParseNode, Par
     let mut lhs: ParseNode = match &token.token_type {
         TokenType::Identifier => {
             if tokens.peek().lexeme.as_deref() == Some("(") {
-                parse_func_call(tokens, &value)?
+                parse_func_call(tokens, value)?
             } else {
                 ParseNode::Value(Value::new(value))
             }
@@ -89,7 +89,7 @@ fn construct_expr(tokens: &mut Lexer, min_power: usize) -> Result<ParseNode, Par
             ParseNode::Constant(ConstantNode::Float(val))
         }
         TokenType::Operator => {
-            let ((), r_bp) = pre_binding_power(&value).unwrap_or_default();
+            let ((), r_bp) = pre_binding_power(value).unwrap_or_default();
             let rhs = construct_expr(tokens, r_bp)?;
             ParseNode::Unary(UnaryNode::new(token.clone(), rhs))
         }
@@ -207,7 +207,7 @@ fn get_operator_info(op: &str) -> Option<(Associativity, usize)> {
 }
 
 /// Pratt parsing binding power for binary operations.
-fn set_binding_power(op_str: &String) -> Option<(usize, usize)> {
+fn set_binding_power(op_str: &str) -> Option<(usize, usize)> {
     if let Some((assoc, pow)) = get_operator_info(op_str) {
         match assoc {
             Associativity::Left => Some((pow, pow + 1)),
@@ -219,8 +219,7 @@ fn set_binding_power(op_str: &String) -> Option<(usize, usize)> {
 }
 
 /// Pratt parsing binding power for unary pre-operations.
-fn pre_binding_power(op_str: &String) -> Option<((), usize)> {
-    let op = op_str.as_str();
+fn pre_binding_power(op: &str) -> Option<((), usize)> {
     match op {
         "+" | "-" => Some(((), 3)),
         "~" => Some(((), 20)),
@@ -265,7 +264,7 @@ fn parse_func_call(tokens: &mut Lexer, value: &String) -> Result<ParseNode, Pars
     }
     _ = tokens.consume(); // )
     Ok(ParseNode::FunctionCall(FunctionCallNode::new(
-        ParseNode::Value(Value::new(&value)),
+        ParseNode::Value(Value::new(value)),
         args,
     )))
 }
@@ -405,7 +404,7 @@ pub struct WhileNode {
 
 fn construct_control(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
     let token = tokens.consume();
-    return match token.lexeme.as_deref() {
+    match token.lexeme.as_deref() {
         Some("if") => {
             check_starting_bracket(tokens, "if");
             let condition = construct_expr(tokens, 0)?;
@@ -471,7 +470,7 @@ fn construct_control(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
         _ => Err(ParserError::new(
             "unknown control/loop statement or mismatched order",
         )),
-    };
+    }
 }
 
 trait Group {
@@ -529,9 +528,6 @@ fn construct_group_expr(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
             }
             TokenType::EOF => {
                 break;
-                // return Err(ParserError::new(
-                //     "parser reached end of file before function body closing bracket",
-                // ))
             }
             TokenType::Control => construct_control(tokens)?,
             TokenType::GroupEnd => {
@@ -568,7 +564,7 @@ mod tests {
     use std::error::Error;
     use std::iter::zip;
 
-    // general testing approach is to compare printing in stdout
+    // the general testing approach is to compare printing in stdout
     use crate::lexer::Lexer;
     use crate::parse::Parser;
 

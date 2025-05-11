@@ -41,7 +41,7 @@ impl Parser {
 }
 
 impl ParseNode {
-    pub fn print(&self) -> String {
+    fn print(&self) -> String {
         self.print_with_indent(0)
     }
 

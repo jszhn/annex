@@ -80,9 +80,9 @@ pub struct Value {
 }
 
 impl Value {
-    pub(super) fn new(val: &String) -> Value {
+    pub(super) fn new(val: &str) -> Value {
         Value {
-            lexeme: val.clone(),
+            lexeme: val.to_string(),
         }
     }
 }
@@ -104,7 +104,7 @@ impl ScalarDeclNode {
         ScalarDeclNode {
             specifier,
             _type,
-            initialiser: initialiser.map(|p| Box::new(p)),
+            initialiser: initialiser.map(Box::new),
             id,
         }
     }
@@ -130,7 +130,7 @@ impl ArrayDeclNode {
             specifier,
             _type,
             size: Box::new(size),
-            initialiser: initialiser.map(|p| Box::new(p)),
+            initialiser: initialiser.map(Box::new),
             id,
         }
     }
@@ -142,13 +142,13 @@ pub struct ReturnNode {
 
 impl ReturnNode {
     pub(super) fn new(expr: Option<ParseNode>) -> ReturnNode {
-        return if expr.is_some() {
+        if let Some(e) = expr {
             ReturnNode {
-                expr: Some(Box::new(expr.unwrap())),
+                expr: Some(Box::new(e)),
             }
         } else {
             ReturnNode { expr: None }
-        };
+        }
     }
 }
 
