@@ -56,27 +56,27 @@ impl BinaryOperator {
         }
     }
 
-    pub fn from_enum(op: &BinaryOperator) -> String {
+    pub fn from_enum(op: &BinaryOperator) -> &'static str {
         match op {
-            BinaryOperator::Add => "+".to_string(),
-            BinaryOperator::Sub => "-".to_string(),
-            BinaryOperator::Mul => "*".to_string(),
-            BinaryOperator::Div => "/".to_string(),
-            BinaryOperator::BitAnd => "&".to_string(),
-            BinaryOperator::BitOr => "|".to_string(),
-            BinaryOperator::BitXor => "^".to_string(),
-            BinaryOperator::ShiftLeft => "<<".to_string(),
-            BinaryOperator::ShiftRight => ">>".to_string(),
-            BinaryOperator::And => "and".to_string(),
-            BinaryOperator::Or => "or".to_string(),
-            BinaryOperator::Eq => "==".to_string(),
-            BinaryOperator::NotEq => "!=".to_string(),
-            BinaryOperator::Greater => ">".to_string(),
-            BinaryOperator::Less => "<".to_string(),
-            BinaryOperator::GreaterEq => ">=".to_string(),
-            BinaryOperator::LessEq => "<=".to_string(),
-            BinaryOperator::Assign => "=".to_string(),
-            BinaryOperator::Array => "[]".to_string(),
+            BinaryOperator::Add => "+",
+            BinaryOperator::Sub => "-",
+            BinaryOperator::Mul => "*",
+            BinaryOperator::Div => "/",
+            BinaryOperator::BitAnd => "&",
+            BinaryOperator::BitOr => "|",
+            BinaryOperator::BitXor => "^",
+            BinaryOperator::ShiftLeft => "<<",
+            BinaryOperator::ShiftRight => ">>",
+            BinaryOperator::And => "and",
+            BinaryOperator::Or => "or",
+            BinaryOperator::Eq => "==",
+            BinaryOperator::NotEq => "!=",
+            BinaryOperator::Greater => ">",
+            BinaryOperator::Less => "<",
+            BinaryOperator::GreaterEq => ">=",
+            BinaryOperator::LessEq => "<=",
+            BinaryOperator::Assign => "=",
+            BinaryOperator::Array => "[]",
         }
     }
 }
@@ -98,11 +98,11 @@ impl UnaryOperator {
         }
     }
 
-    pub fn from_enum(op: &UnaryOperator) -> String {
+    pub fn from_enum(op: &UnaryOperator) -> &'static str {
         match op {
-            UnaryOperator::Neg => "-".to_string(),
-            UnaryOperator::BitNot => "~".to_string(),
-            UnaryOperator::Not => "?".to_string(),
+            UnaryOperator::Neg => "-",
+            UnaryOperator::BitNot => "~",
+            UnaryOperator::Not => "?",
         }
     }
 }
@@ -181,11 +181,11 @@ impl StorageClass {
         }
     }
 
-    pub fn from_enum(sc: &StorageClass) -> String {
+    pub fn from_enum(sc: &StorageClass) -> &'static str {
         match sc {
-            StorageClass::Const => "const".to_string(),
-            StorageClass::Var => "var".to_string(),
-            StorageClass::Vol => "vol".to_string(),
+            StorageClass::Const => "const",
+            StorageClass::Var => "var",
+            StorageClass::Vol => "vol",
         }
     }
 }
