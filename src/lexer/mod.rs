@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use log::{info, warn};
+use log::info;
 
 pub mod io;
 
@@ -11,7 +11,7 @@ pub enum TokenType {
     Function,
     Specifier,
     Operator,
-    Identifier, // catch-all for non keyword tokens
+    Identifier, // catch-all for non-keyword tokens
     Separator,
     Return,
     Boolean,
@@ -29,15 +29,14 @@ pub struct Lexer {
 
 impl Lexer {
     pub fn new(file: String) -> Result<Lexer, Box<dyn Error>> {
-        info!("Starting lexer");
+        info!("[Lexer]: starting");
         let token_str = tokenise(file)?;
-        info!("Lexer completed");
+        info!("[Lexer]: finished");
         Ok(Lexer { tokens: token_str })
     }
 
     /// Pops the next token from the stack.
     pub fn consume(&mut self) -> Token {
-        // warn!("{}", self.peek().token_type); // debug logging
         self.tokens
             .pop()
             .unwrap_or(Token::new_blank(TokenType::EOF))
@@ -51,9 +50,9 @@ impl Lexer {
             .unwrap_or(Token::new_blank(TokenType::EOF))
     }
 
-    /// Returns reference to token stack.
+    /// Returns reference to the token stack.
     pub fn get_ref(&mut self) -> &Vec<Token> {
-        return &self.tokens;
+        &self.tokens
     }
 }
 
@@ -64,10 +63,10 @@ pub struct Token {
 }
 
 impl Token {
-    pub fn new(token_type: TokenType, value: String) -> Token {
+    pub fn new(token_type: TokenType, value: &str) -> Token {
         Token {
             token_type,
-            lexeme: Some(value),
+            lexeme: Some(value.to_string()),
         }
     }
 
@@ -102,7 +101,7 @@ fn tokenise(file: String) -> Result<Vec<Token>, Box<dyn Error>> {
             ')' | '}' | ']' => token_type = TokenType::GroupEnd,
             ';' | ',' | '.' | ':' | '#' => token_type = TokenType::Separator,
             ' ' | '\t' | '\r' | '\x04' => {
-                if buf.len() != 0 && !comment {
+                if !buf.is_empty() && !comment {
                     // clear existing multichar tokens
                     tokens.push(multichar_token(&buf));
                     buf.clear();
@@ -143,12 +142,12 @@ fn tokenise(file: String) -> Result<Vec<Token>, Box<dyn Error>> {
         }
 
         if single_token {
-            if buf.len() != 0 {
+            if !buf.is_empty() {
                 // clear existing multichar lexeme
                 tokens.push(multichar_token(&buf));
                 buf.clear();
             }
-            tokens.push(Token::new(token_type, c.to_string())); // ensures we don't miss tokens
+            tokens.push(Token::new(token_type, &c.to_string())); // ensures we don't miss tokens
         }
     }
     tokens.push(Token::new_blank(TokenType::EOF));
@@ -158,27 +157,27 @@ fn tokenise(file: String) -> Result<Vec<Token>, Box<dyn Error>> {
 
 /// Function that converts a multi-character lexeme into a token.
 /// By default, any unreserved lexemes will be converted into an identifier token.
-fn multichar_token(token: &String) -> Token {
+fn multichar_token(token: &str) -> Token {
     // determines what a multi-character token is
-    match token.as_str() {
-        ">>" | "<<" | "and" | "or" => Token::new(TokenType::Operator, token.clone()),
+    match token {
+        ">>" | "<<" | "and" | "or" => Token::new(TokenType::Operator, token),
         "i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32" | "u64" | "f64" | "f32" | "void" => {
-            Token::new(TokenType::Type, token.clone())
+            Token::new(TokenType::Type, token)
         }
         "fn" => Token::new_blank(TokenType::Function),
         "if" | "while" | "for" | "break" | "continue" | "elif" | "else" => {
-            Token::new(TokenType::Control, token.clone())
+            Token::new(TokenType::Control, token)
         }
-        "var" | "const" | "vol" => Token::new(TokenType::Specifier, token.clone()),
+        "var" | "const" | "vol" => Token::new(TokenType::Specifier, token),
         "return" => Token::new_blank(TokenType::Return),
-        "true" | "false" => Token::new(TokenType::Boolean, token.clone()),
+        "true" | "false" => Token::new(TokenType::Boolean, token),
         _ => {
-            if let Ok(_) = token.parse::<i32>() {
-                Token::new(TokenType::Integer, token.clone())
-            } else if let Ok(_) = token.parse::<f32>() {
-                Token::new(TokenType::Decimal, token.clone())
+            if token.parse::<i32>().is_ok() {
+                Token::new(TokenType::Integer, token)
+            } else if token.parse::<f32>().is_ok() {
+                Token::new(TokenType::Decimal, token)
             } else {
-                Token::new(TokenType::Identifier, token.clone())
+                Token::new(TokenType::Identifier, token)
             }
         }
     }
@@ -193,14 +192,14 @@ mod tests {
         let files: Vec<&str> = vec!["tests/files/arithmetic.ax"];
         let tokens: Vec<Vec<Token>> = vec![vec![
             Token::new_blank(TokenType::EOF),
-            Token::new(TokenType::Separator, ";".to_string()),
-            Token::new(TokenType::Integer, "555".to_string()),
-            Token::new(TokenType::Separator, ".".to_string()),
-            Token::new(TokenType::Identifier, "3".to_string()),
-            Token::new(TokenType::Operator, "*".to_string()),
-            Token::new(TokenType::Identifier, "10".to_string()),
-            Token::new(TokenType::Operator, "+".to_string()),
-            Token::new(TokenType::Identifier, "id".to_string()),
+            Token::new(TokenType::Separator, ";"),
+            Token::new(TokenType::Integer, "555"),
+            Token::new(TokenType::Separator, "."),
+            Token::new(TokenType::Identifier, "3"),
+            Token::new(TokenType::Operator, "*"),
+            Token::new(TokenType::Identifier, "10"),
+            Token::new(TokenType::Operator, "+"),
+            Token::new(TokenType::Identifier, "id"),
         ]];
 
         for (i, file) in files.iter().enumerate() {

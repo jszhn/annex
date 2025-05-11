@@ -43,7 +43,7 @@ impl Lexer {
             if let Some(value) = &item.lexeme {
                 buf.push_str(": ");
                 buf.push_str(value.as_str());
-                buf.push_str("\n");
+                buf.push('\n');
                 output.push_str(buf.as_str());
             }
         }

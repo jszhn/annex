@@ -96,10 +96,7 @@ fn construct_expr(tokens: &mut Lexer, min_power: usize) -> Result<ParseNode, Par
         TokenType::GroupBegin => match token.lexeme.as_deref() {
             Some("(") => {
                 let lhs = construct_expr(tokens, 0)?;
-                assert_eq!(
-                    tokens.consume(),
-                    Token::new(TokenType::GroupEnd, ")".to_string())
-                );
+                assert_eq!(tokens.consume(), Token::new(TokenType::GroupEnd, ")"));
                 lhs
             }
             _ => return Err(ParserError::new("possibly incorrect group begin placement")),
@@ -148,7 +145,7 @@ fn construct_expr(tokens: &mut Lexer, min_power: usize) -> Result<ParseNode, Par
 
                         // info!("Parser found array access");
                         lhs = ParseNode::Binary(BinaryNode::new(
-                            Token::new(TokenType::Operator, "[]".to_string()),
+                            Token::new(TokenType::Operator, "[]"),
                             lhs,
                             index,
                         ));

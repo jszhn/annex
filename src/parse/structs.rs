@@ -12,7 +12,7 @@ impl FunctionNode {
     pub(super) fn new(name: &Token) -> FunctionNode {
         FunctionNode {
             name: name.clone(),
-            return_type: Token::new(TokenType::Type, "void".to_string()),
+            return_type: Token::new(TokenType::Type, "void"),
             params: Vec::new(),
             body: Box::new(ParseNode::None),
         }
