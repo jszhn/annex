@@ -1,6 +1,10 @@
 use std::env;
 use std::error::Error;
 
+use crate::ast::Ast;
+use crate::ir::Inter;
+use crate::lexer::Lexer;
+use crate::parse::Parser;
 use fs_err as fs;
 use log::error;
 
@@ -10,7 +14,6 @@ mod ir;
 pub mod lexer;
 mod parse;
 mod sem;
-pub mod util;
 
 fn main() -> Result<(), Box<dyn Error>> {
     colog::init();
@@ -21,11 +24,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
     let file_path = &args[1];
     let file_contents = fs::read_to_string(file_path)?;
-    let tokens = lexer::Lexer::new(file_contents)?;
-    let parse_tree = parse::Parser::new(tokens)?;
-    let as_tree = ast::Ast::new(parse_tree)?;
+
+    let tokens = Lexer::new(file_contents)?;
+    let parse_tree = Parser::new(tokens)?;
+    let as_tree = Ast::new(parse_tree)?;
     as_tree.sem_analysis()?;
-    let ir = ir::Inter::new(as_tree)?;
-    // let asm = gen::Assembly::new(abstract_syntax_tree)?;
+    let ir = Inter::new(as_tree)?;
+    // assembly generation
+
     Ok(())
 }
