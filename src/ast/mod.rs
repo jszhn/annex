@@ -1,7 +1,7 @@
 use crate::ast::types::*;
 use crate::ast::util::AstError;
-use crate::parse::{ConstantNode, ParseNode, Parser};
 use crate::parse::structs::Value;
+use crate::parse::{ConstantNode, ParseNode, Parser};
 
 pub mod types;
 mod util;
@@ -33,7 +33,7 @@ fn convert_parse_tree(parse_node: ParseNode) -> Result<AstNode, AstError> {
             let params = node
                 .params
                 .into_iter()
-                .map(|p| convert_parse_tree(p))
+                .map(convert_parse_tree)
                 .collect::<Result<Vec<_>, _>>()?;
             let body = convert_parse_tree(*node.body)?;
 

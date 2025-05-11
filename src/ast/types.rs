@@ -55,6 +55,30 @@ impl BinaryOperator {
             _ => None,
         }
     }
+
+    pub fn from_enum(op: &BinaryOperator) -> String {
+        match op {
+            BinaryOperator::Add => "+".to_string(),
+            BinaryOperator::Sub => "-".to_string(),
+            BinaryOperator::Mul => "*".to_string(),
+            BinaryOperator::Div => "/".to_string(),
+            BinaryOperator::BitAnd => "&".to_string(),
+            BinaryOperator::BitOr => "|".to_string(),
+            BinaryOperator::BitXor => "^".to_string(),
+            BinaryOperator::ShiftLeft => "<<".to_string(),
+            BinaryOperator::ShiftRight => ">>".to_string(),
+            BinaryOperator::And => "and".to_string(),
+            BinaryOperator::Or => "or".to_string(),
+            BinaryOperator::Eq => "==".to_string(),
+            BinaryOperator::NotEq => "!=".to_string(),
+            BinaryOperator::Greater => ">".to_string(),
+            BinaryOperator::Less => "<".to_string(),
+            BinaryOperator::GreaterEq => ">=".to_string(),
+            BinaryOperator::LessEq => "<=".to_string(),
+            BinaryOperator::Assign => "=".to_string(),
+            BinaryOperator::Array => "[]".to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -71,6 +95,14 @@ impl UnaryOperator {
             "~" => Some(Self::BitNot),
             "?" => Some(Self::Not),
             _ => None,
+        }
+    }
+
+    pub fn from_enum(op: &UnaryOperator) -> String {
+        match op {
+            UnaryOperator::Neg => "-".to_string(),
+            UnaryOperator::BitNot => "~".to_string(),
+            UnaryOperator::Not => "?".to_string(),
         }
     }
 }
@@ -110,6 +142,26 @@ impl Type {
             _ => None,
         }
     }
+
+    pub fn from_enum(typ: &Type) -> String {
+        match typ {
+            Type::I8 => "i8".to_string(),
+            Type::I16 => "i16".to_string(),
+            Type::I32 => "i32".to_string(),
+            Type::I64 => "i64".to_string(),
+            Type::U8 => "u8".to_string(),
+            Type::U16 => "u16".to_string(),
+            Type::U32 => "u32".to_string(),
+            Type::U64 => "u64".to_string(),
+            Type::F32 => "f32".to_string(),
+            Type::F64 => "f64".to_string(),
+            Type::Bool => "bool".to_string(),
+            Type::Void => "void".to_string(),
+            Type::Array(typ_ptr, s) => {
+                format!("{}[{}]", Self::from_enum(typ_ptr), s)
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -128,6 +180,14 @@ impl StorageClass {
             _ => None,
         }
     }
+
+    pub fn from_enum(sc: &StorageClass) -> String {
+        match sc {
+            StorageClass::Const => "const".to_string(),
+            StorageClass::Var => "var".to_string(),
+            StorageClass::Vol => "vol".to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -139,7 +199,6 @@ pub enum Literal {
 
 #[derive(Clone, PartialEq)]
 pub enum AstNode {
-    Program(Vec<AstNode>),
     Function(FunctionNode),
     FunctionCall(FunctionCallNode),
     Parameter(ParamNode),
