@@ -36,6 +36,7 @@ impl Token {
 }
 
 impl Lexer {
+    #[allow(dead_code)]
     fn to_txt(&self, path: String) -> Result<(), Error> {
         let mut output = String::from("");
         for item in self.tokens.iter().rev() {
@@ -72,6 +73,7 @@ impl Display for TokenType {
         }
     }
 }
+#[allow(dead_code)]
 fn get_token_name(_type: TokenType) -> String {
     // to avoid needing the debug specifier
     match _type {

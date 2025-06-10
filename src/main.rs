@@ -29,7 +29,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let parse_tree = Parser::new(tokens)?;
     let as_tree = Ast::new(parse_tree)?;
     as_tree.sem_analysis()?;
-    let ir = Inter::new(as_tree)?;
+    let _ir = Inter::new(as_tree)?;
     // assembly generation
 
     Ok(())

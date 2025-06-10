@@ -3,12 +3,14 @@ use std::collections::HashMap;
 use crate::ast::types::{ParamNode, Type};
 
 /// FIFO stack-based symbol table implementation, for entering and exiting program scopes.
+#[allow(dead_code)]
 pub struct ScopedSymTable {
     pub scopes: Vec<SymTable<VarEntry>>,
     num_scopes: u32,
 }
 
 impl ScopedSymTable {
+    #[allow(dead_code)]
     pub fn new() -> ScopedSymTable {
         let mut scopes = Vec::new();
         scopes.push(SymTable::new(0));
@@ -19,12 +21,14 @@ impl ScopedSymTable {
     }
 
     /// Enters new scope, with new symbol table.
+    #[allow(dead_code)]
     pub fn enter(&mut self) {
         self.scopes.push(SymTable::new(self.num_scopes + 1));
         self.num_scopes += 1;
     }
 
     /// Exits current scope. Discards current symbol table.
+    #[allow(dead_code)]
     pub fn exit(&mut self) {
         if self.num_scopes > 1 {
             self.scopes.pop();
@@ -32,6 +36,7 @@ impl ScopedSymTable {
         }
     }
 
+    #[allow(dead_code)]
     pub fn lookup(&self, key: &String) -> Option<&VarEntry> {
         for scope in self.scopes.iter().rev() {
             if let Some(entry) = scope.get_ref(key) {
@@ -42,6 +47,7 @@ impl ScopedSymTable {
     }
 
     /// Looks-up the given key in the current scope's symbol table.
+    #[allow(dead_code)]
     pub fn lookup_current(&self, key: &String) -> Option<&VarEntry> {
         let scope = self.scopes.last()?;
         if let Some(entry) = scope.get_ref(key) {
@@ -65,6 +71,7 @@ impl<T> SymTable<T> {
         }
     }
 
+    #[allow(dead_code)]
     pub fn get_ref(&self, key: &String) -> Option<&T> {
         self.table.get(key)
     }
@@ -79,23 +86,29 @@ impl<T> SymTable<T> {
     }
 }
 
+#[allow(dead_code)]
 pub struct VarEntry {
     typ: Type,
     is_array: bool,
 }
 
 impl VarEntry {
+    #[allow(dead_code)]
     pub fn new(typ: Type, is_array: bool) -> VarEntry {
         VarEntry { typ, is_array }
     }
 }
 
+#[allow(dead_code)]
 pub struct FuncEntry<'a> {
+    #[allow(dead_code)]
     return_type: Type,
+    #[allow(dead_code)]
     params: &'a Vec<ParamNode>,
 }
 
 impl<'a> FuncEntry<'a> {
+    #[allow(dead_code)]
     pub fn new(return_type: Type, params: &'a Vec<ParamNode>) -> FuncEntry<'a> {
         FuncEntry {
             return_type,

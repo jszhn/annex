@@ -7,7 +7,7 @@ pub mod sym_table;
 
 impl Ast {
     pub fn sem_analysis(&self) -> Result<(), SemError> {
-        let func_table = fill_func_table(self)?;
+        let _func_table = fill_func_table(self)?;
         Ok(())
     }
 }
