@@ -197,7 +197,7 @@ pub enum Literal {
     Bool(bool),
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum AstNode {
     Function(FunctionNode),
     FunctionCall(FunctionCallNode),
@@ -218,7 +218,7 @@ pub enum AstNode {
     Arr(ArrAccessNode),
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct FunctionNode {
     pub name: String,
     pub params: Vec<ParamNode>,
@@ -226,14 +226,14 @@ pub struct FunctionNode {
     pub body: Box<AstNode>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct FunctionCallNode {
     pub name: String,
     pub args: Vec<AstNode>,
     pub return_type: Option<Type>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ParamNode {
     pub name: String,
     pub typ: Type,
@@ -241,20 +241,20 @@ pub struct ParamNode {
     pub size: Option<Box<AstNode>>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BinaryNode {
     pub op: BinaryOperator,
     pub left: Box<AstNode>,
     pub right: Box<AstNode>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct UnaryNode {
     pub op: UnaryOperator,
     pub expr: Box<AstNode>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct IfNode {
     pub condition: Box<AstNode>,
     pub then_branch: Box<AstNode>,
@@ -262,13 +262,13 @@ pub struct IfNode {
     pub else_branch: Option<Box<AstNode>>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct WhileNode {
     pub condition: Box<AstNode>,
     pub body: Box<AstNode>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ForNode {
     pub init: Box<AstNode>,
     pub condition: Box<AstNode>,
@@ -276,7 +276,7 @@ pub struct ForNode {
     pub body: Box<AstNode>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BlockNode {
     pub elems: Vec<AstNode>,
 }
@@ -287,7 +287,7 @@ impl BlockNode {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct VarDeclNode {
     pub storage: StorageClass,
     pub name: String,
@@ -295,7 +295,7 @@ pub struct VarDeclNode {
     pub initialiser: Option<Box<AstNode>>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ArrDeclNode {
     pub storage: StorageClass,
     pub name: String,
@@ -304,7 +304,7 @@ pub struct ArrDeclNode {
     pub initialiser: Option<Box<AstNode>>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ArrAccessNode {
     pub name: String,
     pub access: Box<AstNode>,

@@ -1,0 +1,5 @@
+fn main{} void {
+    if{5} {
+        var i32 x = 1;
+    }
+}

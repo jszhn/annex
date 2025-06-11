@@ -1,0 +1,6 @@
+fn main{} void {
+    var bool flag = true;
+    if{flag} {
+        var i32 x = 1;
+    }
+}

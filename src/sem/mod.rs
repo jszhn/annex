@@ -4,11 +4,20 @@ use crate::sem::sym_table::{FuncEntry, SymTable};
 
 mod err;
 pub mod sym_table;
+mod analyzer;
+
+pub use err::{SemErrorKind, Location};
+pub use analyzer::SemanticAnalyzer;
 
 impl Ast {
-    pub fn sem_analysis(&self) -> Result<(), SemError> {
-        let _func_table = fill_func_table(self)?;
-        Ok(())
+    pub fn sem_analysis(&self) -> Result<(), Vec<SemError>> {
+        let mut analyzer = SemanticAnalyzer::new();
+        analyzer.analyze(self)
+    }
+    
+    /// Legacy function table filling for compatibility
+    pub fn fill_func_table(&self) -> Result<SymTable<FuncEntry>, SemError> {
+        fill_func_table(self)
     }
 }
 
@@ -28,15 +37,19 @@ fn fill_func_table(tree: &Ast) -> Result<SymTable<FuncEntry>, SemError> {
                 }
             }) {
                 if func_table.contains(&func.name) {
-                    return Err(SemError::RedefFunction(func.name.clone()));
+                    return Err(SemError::identifier_redefined(
+                        crate::sem::err::Location::unknown(),
+                        func.name.clone(),
+                    ));
                 } else {
-                    let entry = FuncEntry::new(func.return_type.clone(), &func.params);
+                    let entry = FuncEntry::new(func.return_type.clone(), func.params.clone());
                     func_table.insert(func.name.clone(), entry);
                 }
             }
             Ok(func_table)
         }
-        _ => Err(SemError::InternalError(
+        _ => Err(SemError::internal_error(
+            crate::sem::err::Location::unknown(),
             "Mismatched abstract syntax tree head node type".to_string(),
         )),
     }

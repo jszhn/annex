@@ -1,0 +1,3 @@
+fn main{} void {
+    var i32 x = y;
+}

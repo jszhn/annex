@@ -55,6 +55,24 @@ impl ScopedSymTable {
         }
         None
     }
+    
+    /// Insert a variable into the current scope
+    pub fn insert_current(&mut self, key: String, entry: VarEntry) -> Option<VarEntry> {
+        if let Some(current_scope) = self.scopes.last_mut() {
+            current_scope.insert(key, entry)
+        } else {
+            None
+        }
+    }
+    
+    /// Check if a variable exists in the current scope only
+    pub fn contains_current(&self, key: &String) -> bool {
+        if let Some(scope) = self.scopes.last() {
+            scope.contains(key)
+        } else {
+            false
+        }
+    }
 }
 
 /// Symbol table struct type. Wraps around a hash table.
@@ -86,33 +104,59 @@ impl<T> SymTable<T> {
     }
 }
 
-#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct VarEntry {
-    typ: Type,
-    is_array: bool,
+    pub typ: Type,
+    pub is_array: bool,
 }
 
 impl VarEntry {
-    #[allow(dead_code)]
     pub fn new(typ: Type, is_array: bool) -> VarEntry {
         VarEntry { typ, is_array }
     }
+    
+    pub fn get_type(&self) -> &Type {
+        &self.typ
+    }
+    
+    pub fn is_array(&self) -> bool {
+        self.is_array
+    }
 }
 
-#[allow(dead_code)]
-pub struct FuncEntry<'a> {
-    #[allow(dead_code)]
-    return_type: Type,
-    #[allow(dead_code)]
-    params: &'a Vec<ParamNode>,
+#[derive(Debug, Clone)]
+pub struct FuncEntry {
+    pub return_type: Type,
+    pub params: Vec<ParamNode>,
 }
 
-impl<'a> FuncEntry<'a> {
-    #[allow(dead_code)]
-    pub fn new(return_type: Type, params: &'a Vec<ParamNode>) -> FuncEntry<'a> {
+impl FuncEntry {
+    pub fn new(return_type: Type, params: Vec<ParamNode>) -> FuncEntry {
         FuncEntry {
             return_type,
             params,
         }
+    }
+    
+    pub fn get_return_type(&self) -> &Type {
+        &self.return_type
+    }
+    
+    pub fn get_params(&self) -> &Vec<ParamNode> {
+        &self.params
+    }
+    
+    pub fn matches_signature(&self, args: &Vec<Type>) -> bool {
+        if self.params.len() != args.len() {
+            return false;
+        }
+        
+        for (param, arg) in self.params.iter().zip(args.iter()) {
+            if param.typ != *arg {
+                return false;
+            }
+        }
+        
+        true
     }
 }

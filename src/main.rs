@@ -28,7 +28,16 @@ fn main() -> Result<(), Box<dyn Error>> {
     let tokens = Lexer::new(file_contents)?;
     let parse_tree = Parser::new(tokens)?;
     let as_tree = Ast::new(parse_tree)?;
-    as_tree.sem_analysis()?;
+    match as_tree.sem_analysis() {
+        Ok(()) => {},
+        Err(errors) => {
+            eprintln!("Semantic analysis failed with {} error(s):", errors.len());
+            for error in errors {
+                eprintln!("{}", error);
+            }
+            return Err("Semantic analysis failed".into());
+        }
+    }
     let _ir = Inter::new(as_tree)?;
     // assembly generation
 

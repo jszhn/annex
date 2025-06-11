@@ -1,0 +1,5 @@
+fn main{} void {
+    var i32 x = 5;
+    var i32 y = 10;
+    var i32 result = x + y;
+}
