@@ -1,19 +1,13 @@
 use std::env;
 use std::error::Error;
 
-use crate::ast::Ast;
-use crate::ir::Inter;
-use crate::lexer::Lexer;
-use crate::parse::Parser;
+use annex::ast::Ast;
+use annex::ir::Inter;
+use annex::lexer::Lexer;
+use annex::parse::Parser;
+
 use fs_err as fs;
 use log::error;
-
-pub mod ast;
-mod gen;
-mod ir;
-pub mod lexer;
-mod parse;
-mod sem;
 
 fn main() -> Result<(), Box<dyn Error>> {
     colog::init();

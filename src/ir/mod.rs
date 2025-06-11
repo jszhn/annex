@@ -278,7 +278,7 @@ impl IRGenerator {
 
     fn resolve_node(&mut self, node: &AstNode) -> Result<(), Error> {
         match node {
-            AstNode::Parameter(_) | AstNode::Program(_) => unreachable!(), // parameter nodes should only be in function handler
+            AstNode::Parameter(_) => unreachable!(), // parameter nodes should only be in function handler
             AstNode::Function(node) => self.convert_function(node)?,
             AstNode::VarDecl(node) => self.convert_scalar_decl(node)?,
             AstNode::ArrDecl(node) => self.convert_arr_decl(node)?,

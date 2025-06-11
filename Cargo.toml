@@ -3,8 +3,15 @@ name = "annex"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "annex"
+path = "src/main.rs"
+
+[lib]
+name = "annex"
+path = "src/lib.rs"
+
 [dependencies]
 colog = "1.3.0"
 fs-err = "3.0.0"
-itertools = "0.14.0"
 log = "0.4.22"
