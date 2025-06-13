@@ -1,33 +1,42 @@
-use crate::lexer::{Token, TokenType};
-use crate::parse::{ParseNode, WhileNode};
+use crate::lexer::Token;
+use crate::parse::util::ParserError;
+use crate::parse::ParseNode;
 
+impl ParseNode {
+    pub fn push_body(&mut self, node: ParseNode) -> Result<(), ParserError> {
+        match self {
+            ParseNode::Scope(n) => n.push_body(node),
+            _ => {
+                return Err(ParserError::new(
+                    "Internal error: unexpected parser node type.",
+                ))
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Constant node. Stores value
+pub enum ConstantNode {
+    Bool(bool),
+    Int(u64),
+    Float(f64),
+}
 pub struct FunctionNode {
-    pub name: Token,
-    pub return_type: Token,
+    pub name: String,
+    pub return_type: String,
     pub params: Vec<ParseNode>,
     pub body: Box<ParseNode>,
 }
 
 impl FunctionNode {
-    pub(super) fn new(name: &Token) -> FunctionNode {
-        FunctionNode {
-            name: name.clone(),
-            return_type: Token::new(TokenType::Type, "void"),
-            params: Vec::new(),
-            body: Box::new(ParseNode::None),
+    pub fn new(name: String, return_type: String, params: Vec<ParseNode>, body: ParseNode) -> Self {
+        Self {
+            name,
+            return_type,
+            params,
+            body: Box::new(body),
         }
-    }
-
-    pub(super) fn set_body(&mut self, scope: ParseNode) {
-        self.body = Box::new(scope);
-    }
-
-    pub(super) fn push_param(&mut self, param: ParseNode) {
-        self.params.push(param);
-    }
-
-    pub(super) fn set_return(&mut self, typ: Token) {
-        self.return_type = typ;
     }
 }
 
@@ -37,8 +46,8 @@ pub struct FunctionCallNode {
 }
 
 impl FunctionCallNode {
-    pub(super) fn new(func: ParseNode, args: Vec<ParseNode>) -> FunctionCallNode {
-        FunctionCallNode {
+    pub fn new(func: ParseNode, args: Vec<ParseNode>) -> Self {
+        Self {
             function: Box::new(func),
             args,
         }
@@ -47,13 +56,13 @@ impl FunctionCallNode {
 
 pub struct BinaryNode {
     pub left: Box<ParseNode>,
-    pub op: Token,
+    pub op: String,
     pub right: Box<ParseNode>,
 }
 
 impl BinaryNode {
-    pub(super) fn new(op: Token, left: ParseNode, right: ParseNode) -> BinaryNode {
-        BinaryNode {
+    pub fn new(op: String, left: ParseNode, right: ParseNode) -> Self {
+        Self {
             left: Box::new(left),
             op,
             right: Box::new(right),
@@ -62,13 +71,13 @@ impl BinaryNode {
 }
 
 pub struct UnaryNode {
-    pub op: Token,
+    pub op: String,
     pub operand: Box<ParseNode>,
 }
 
 impl UnaryNode {
-    pub(super) fn new(op: Token, operand: ParseNode) -> UnaryNode {
-        UnaryNode {
+    pub fn new(op: String, operand: ParseNode) -> Self {
+        Self {
             op,
             operand: Box::new(operand),
         }
@@ -80,8 +89,8 @@ pub struct Value {
 }
 
 impl Value {
-    pub(super) fn new(val: &str) -> Value {
-        Value {
+    pub fn new(val: &str) -> Self {
+        Self {
             lexeme: val.to_string(),
         }
     }
@@ -89,21 +98,16 @@ impl Value {
 
 pub struct ScalarDeclNode {
     pub specifier: Token,
-    pub _type: Token,
+    pub typ: String,
     pub initialiser: Option<Box<ParseNode>>,
     pub id: String,
 }
 
 impl ScalarDeclNode {
-    pub(super) fn new(
-        specifier: Token,
-        _type: Token,
-        initialiser: Option<ParseNode>,
-        id: String,
-    ) -> ScalarDeclNode {
-        ScalarDeclNode {
+    pub fn new(specifier: Token, typ: String, initialiser: Option<ParseNode>, id: String) -> Self {
+        Self {
             specifier,
-            _type,
+            typ,
             initialiser: initialiser.map(Box::new),
             id,
         }
@@ -112,23 +116,23 @@ impl ScalarDeclNode {
 
 pub struct ArrayDeclNode {
     pub specifier: Token,
-    pub _type: Token,
+    pub typ: String,
     pub size: Box<ParseNode>,
     pub initialiser: Option<Box<ParseNode>>,
     pub id: String,
 }
 
 impl ArrayDeclNode {
-    pub(super) fn new(
+    pub fn new(
         specifier: Token,
-        _type: Token,
+        typ: String,
         initialiser: Option<ParseNode>,
         size: ParseNode,
         id: String,
-    ) -> ArrayDeclNode {
-        ArrayDeclNode {
+    ) -> Self {
+        Self {
             specifier,
-            _type,
+            typ,
             size: Box::new(size),
             initialiser: initialiser.map(Box::new),
             id,
@@ -141,13 +145,9 @@ pub struct ReturnNode {
 }
 
 impl ReturnNode {
-    pub(super) fn new(expr: Option<ParseNode>) -> ReturnNode {
-        if let Some(e) = expr {
-            ReturnNode {
-                expr: Some(Box::new(e)),
-            }
-        } else {
-            ReturnNode { expr: None }
+    pub fn new(expr: Option<ParseNode>) -> Self {
+        Self {
+            expr: expr.map(Box::new),
         }
     }
 }
@@ -158,8 +158,8 @@ pub struct BasicControlNode {
 }
 
 impl BasicControlNode {
-    pub(super) fn new(cond: ParseNode, then: ParseNode) -> BasicControlNode {
-        BasicControlNode {
+    pub fn new(cond: ParseNode, then: ParseNode) -> Self {
+        Self {
             cond: Box::new(cond),
             then: Box::new(then),
         }
@@ -173,28 +173,33 @@ pub struct ControlNode {
 }
 
 impl ControlNode {
-    pub(super) fn new(cond: ParseNode, then: ParseNode) -> ControlNode {
-        ControlNode {
+    pub fn new(cond: ParseNode, then: ParseNode) -> Self {
+        Self {
             _if: BasicControlNode::new(cond, then),
             elif: None,
             el: None,
         }
     }
 
-    pub(super) fn push_elif(&mut self, cond: ParseNode, then: ParseNode) {
+    pub fn push_elif(&mut self, cond: ParseNode, then: ParseNode) {
         self.elif
             .get_or_insert(Vec::new())
             .push(BasicControlNode::new(cond, then))
     }
 
-    pub(super) fn set_else(&mut self, el: ParseNode) {
+    pub fn set_else(&mut self, el: ParseNode) {
         self.el = Some(Box::new(el))
     }
 }
 
+pub struct WhileNode {
+    pub cond: Box<ParseNode>,
+    pub then: Box<ParseNode>,
+}
+
 impl WhileNode {
-    pub(super) fn new(cond: ParseNode, then: ParseNode) -> WhileNode {
-        WhileNode {
+    pub fn new(cond: ParseNode, then: ParseNode) -> Self {
+        Self {
             cond: Box::new(cond),
             then: Box::new(then),
         }
@@ -209,13 +214,8 @@ pub struct ForNode {
 }
 
 impl ForNode {
-    pub(super) fn new(
-        pre: ParseNode,
-        cond: ParseNode,
-        post: ParseNode,
-        then: ParseNode,
-    ) -> ForNode {
-        ForNode {
+    pub fn new(pre: ParseNode, cond: ParseNode, post: ParseNode, then: ParseNode) -> Self {
+        Self {
             pre: Box::new(pre),
             cond: Box::new(cond),
             post: Box::new(post),
@@ -225,12 +225,12 @@ impl ForNode {
 }
 
 pub struct LoopControlNode {
-    pub _type: Token,
+    pub typ: Token,
 }
 
 impl LoopControlNode {
-    pub(super) fn new(_type: Token) -> LoopControlNode {
-        LoopControlNode { _type }
+    pub fn new(typ: Token) -> Self {
+        Self { typ }
     }
 }
 
@@ -239,13 +239,13 @@ pub struct ScopeNode {
 }
 
 impl ScopeNode {
-    pub(super) fn new() -> ScopeNode {
-        ScopeNode {
+    pub fn new() -> Self {
+        Self {
             contents: Vec::new(),
         }
     }
 
-    pub(super) fn push_body(&mut self, node: ParseNode) {
+    pub fn push_body(&mut self, node: ParseNode) {
         self.contents.push(node)
     }
 }

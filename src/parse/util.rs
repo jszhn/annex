@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Display, Formatter};
 
-use crate::parse::{ConstantNode, ParseNode, Parser};
+use crate::parse::{ConstantNode, ParseNode, ParseTree};
 
 pub struct ParserError {
     message: String,
@@ -30,7 +30,7 @@ impl Display for ParserError {
 
 impl std::error::Error for ParserError {}
 
-impl Parser {
+impl ParseTree {
     pub fn print(&self, stdout: bool) -> String {
         let result = self.head.print();
         if stdout {
@@ -51,15 +51,10 @@ impl ParseNode {
 
         match self {
             ParseNode::Function(node) => {
-                output.push_str(&format!(
-                    "{}Function: {}\n",
-                    indent_str,
-                    node.name.lexeme.as_ref().unwrap()
-                ));
+                output.push_str(&format!("{}Function: {}\n", indent_str, node.name));
                 output.push_str(&format!(
                     "{}Return type: {}\n",
-                    indent_str,
-                    node.return_type.lexeme.as_ref().unwrap()
+                    indent_str, node.return_type
                 ));
                 output.push_str(&format!("{}Parameters:\n", indent_str));
                 for param in &node.params {
@@ -77,11 +72,7 @@ impl ParseNode {
             }
             ParseNode::Binary(node) => {
                 output.push_str(&format!("{}Binary Operation:\n", indent_str));
-                output.push_str(&format!(
-                    "{}Operator: {}\n",
-                    indent_str,
-                    node.op.lexeme.as_ref().unwrap()
-                ));
+                output.push_str(&format!("{}Operator: {}\n", indent_str, node.op));
                 output.push_str(&format!("{}Left:\n", indent_str));
                 output.push_str(&node.left.print_with_indent(indent + 1));
                 output.push_str(&format!("{}Right:\n", indent_str));
@@ -89,11 +80,7 @@ impl ParseNode {
             }
             ParseNode::Unary(node) => {
                 output.push_str(&format!("{}Unary Operation:\n", indent_str));
-                output.push_str(&format!(
-                    "{}Operator: {}\n",
-                    indent_str,
-                    node.op.lexeme.as_ref().unwrap()
-                ));
+                output.push_str(&format!("{}Operator: {}\n", indent_str, node.op));
                 output.push_str(&format!("{}Operand:\n", indent_str));
                 output.push_str(&node.operand.print_with_indent(indent + 1));
             }
@@ -103,31 +90,15 @@ impl ParseNode {
             ParseNode::ScalarDecl(node) => {
                 output.push_str(&format!("{}Scalar Declaration:\n", indent_str));
                 let inner_indent = format!("{}  ", indent_str);
-                output.push_str(&format!(
-                    "{}Specifier: {}\n",
-                    inner_indent,
-                    node.specifier.lexeme.as_ref().unwrap()
-                ));
-                output.push_str(&format!(
-                    "{}Type: {}\n",
-                    inner_indent,
-                    node._type.lexeme.as_ref().unwrap()
-                ));
+                output.push_str(&format!("{}{}\n", inner_indent, node.specifier.to_string()));
+                output.push_str(&format!("{}Type: {}\n", inner_indent, node.typ));
                 output.push_str(&format!("{}Identifier: {}\n", inner_indent, node.id));
             }
             ParseNode::ArrDecl(node) => {
                 output.push_str(&format!("{}Array Declaration:\n", indent_str));
                 let inner_indent = format!("{}  ", indent_str);
-                output.push_str(&format!(
-                    "{}Specifier: {}\n",
-                    inner_indent,
-                    node.specifier.lexeme.as_ref().unwrap()
-                ));
-                output.push_str(&format!(
-                    "{}Type: {}\n",
-                    inner_indent,
-                    node._type.lexeme.as_ref().unwrap()
-                ));
+                output.push_str(&format!("{}{}\n", inner_indent, node.specifier.to_string()));
+                output.push_str(&format!("{}Type: {}\n", inner_indent, node.typ));
                 output.push_str(&format!("{}Size:\n", inner_indent));
                 output.push_str(&node.size.print_with_indent(indent + 2));
                 output.push_str(&format!("{}Identifier: {}\n", inner_indent, node.id));
@@ -187,11 +158,7 @@ impl ParseNode {
                 }
             }
             ParseNode::LoopControl(node) => {
-                output.push_str(&format!(
-                    "{}Loop Control: {}\n",
-                    indent_str,
-                    node._type.lexeme.as_ref().unwrap()
-                ));
+                output.push_str(&format!("{}{}\n", indent_str, node.typ.to_string()));
             }
             ParseNode::Constant(constant) => match constant {
                 ConstantNode::Bool(b) => {

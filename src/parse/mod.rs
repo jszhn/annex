@@ -1,185 +1,562 @@
-use std::error::Error;
-
-use log::{error, info, warn};
-
-use crate::lexer::{Lexer, Token, TokenType};
+use crate::lexer::{Token, TokenStream, TokenType};
 use crate::parse::structs::*;
 use crate::parse::util::ParserError;
+use log::{error, info, warn};
+use std::error::Error;
 
 pub mod structs;
 mod util;
 
-pub struct Parser {
+pub struct ParseTree {
     pub head: ParseNode,
 }
 
+impl ParseTree {
+    pub fn new(tokens: TokenStream) -> Result<Self, Box<dyn Error>> {
+        let mut parser = Parser::new(tokens);
+        let head = parser.start()?;
+
+        assert!(
+            parser.tokens.is_empty(),
+            "Internal error: parser failed to successfully parse all tokens in stream"
+        );
+
+        Ok(ParseTree { head })
+    }
+}
+
+struct Parser {
+    tokens: TokenStream,
+}
+
 impl Parser {
-    pub fn new(mut tokens: Lexer) -> Result<Parser, Box<dyn Error>> {
-        info!("[Parser]: starting");
-        parse(&mut tokens)
+    fn new(tokens: TokenStream) -> Self {
+        Self { tokens }
     }
-}
 
-/// Primary parser interface. Called by the ParseTree struct constructor.
-fn parse(tokens: &mut Lexer) -> Result<Parser, Box<dyn Error>> {
-    let head = parse_global_scope(tokens)?;
-    assert_eq!(
-        tokens.get_ref().len(),
-        0,
-        "Internal error: parser failed to successfully parse all tokens in stream"
-    );
-    info!("[Parser]: program parsed successfully");
-    Ok(Parser { head })
-}
-
-fn parse_global_scope(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
-    let mut node = ParseNode::Scope(ScopeNode::new());
-    while tokens.peek().token_type != TokenType::EOF {
-        let next = tokens.peek();
-        let stmt = match next.token_type {
-            TokenType::Function => construct_func(tokens)?,
-            TokenType::Specifier => construct_decl(tokens, false)?,
-            _ => {
-                error!("[Parser]: found illegal token type: {}", next.token_type);
-                return Err(ParserError::new("Illegal program statement"));
-            }
-        };
-        node.push_body(stmt)?;
+    /// Wrapper method for the TokenStream consume() method.
+    fn consume(&mut self) -> Token {
+        self.tokens.consume()
     }
-    tokens.consume();
-    Ok(node)
-}
 
-/// Pratt parsing for expressions
-///     https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
-fn construct_expr(tokens: &mut Lexer, min_power: usize) -> Result<ParseNode, ParserError> {
-    let token = tokens.consume();
-    let Some(value) = &token.lexeme else {
-        return Err(ParserError::new(
-            "Invalid lexer value. Possibly unsupported?",
-        ));
-    };
+    /// Wrapper method for the TokenStream peek() method.
+    fn peek(&mut self) -> Token {
+        self.tokens.peek()
+    }
 
-    let mut lhs: ParseNode = match &token.token_type {
-        TokenType::Identifier => {
-            if tokens.peek().lexeme.as_deref() == Some("(") {
-                parse_func_call(tokens, value)?
-            } else {
-                ParseNode::Value(Value::new(value))
-            }
-        }
-        TokenType::Boolean => {
-            let val = match value.as_str() {
-                "true" => true,
-                "false" => false,
-                _ => return Err(ParserError::new("Invalid boolean value")),
+    /// Parses the program's global scope. Only either function or symbol definitions are permitted here.
+    fn start(&mut self) -> Result<ParseNode, ParserError> {
+        let mut node = ParseNode::Scope(ScopeNode::new());
+
+        loop {
+            let next = self.peek();
+            let stmt = match &next.typ {
+                typ if typ.is_specifier() => self.decl_stmt(false)?,
+                TokenType::Function => self.function()?,
+                TokenType::EOF => break,
+                _ => {
+                    error!("[Parser]: found illegal token type: {}", next.typ);
+                    return Err(ParserError::new("Illegal program statement"));
+                }
             };
-            ParseNode::Constant(ConstantNode::Bool(val))
+            node.push_body(stmt)?;
         }
-        TokenType::Integer => {
-            let val = value
-                .parse::<i64>()
-                .map_err(|_| ParserError::new("Invalid integer constant"))?;
-            ParseNode::Constant(ConstantNode::Int(val))
-        }
-        TokenType::Decimal => {
-            let val = value
-                .parse::<f64>()
-                .map_err(|_| ParserError::new("Invalid float constant"))?;
-            ParseNode::Constant(ConstantNode::Float(val))
-        }
-        TokenType::Operator => {
-            let ((), r_bp) = pre_binding_power(value).unwrap_or_default();
-            let rhs = construct_expr(tokens, r_bp)?;
-            ParseNode::Unary(UnaryNode::new(token.clone(), rhs))
-        }
-        TokenType::GroupBegin => match token.lexeme.as_deref() {
-            Some("(") => {
-                let lhs = construct_expr(tokens, 0)?;
-                assert_eq!(tokens.consume(), Token::new(TokenType::GroupEnd, ")"));
-                lhs
-            }
-            _ => return Err(ParserError::new("possibly incorrect group begin placement")),
-        },
-        _ => {
-            error!("[Parser]: found token type {}", token.token_type);
-            return Err(ParserError::new("unsupported parser type."));
-        }
-    };
 
-    loop {
-        let next_token = tokens.peek();
-        let next_token_type = next_token.token_type;
+        self.consume(); // EOF
+        Ok(node)
+    }
 
-        match next_token_type {
-            TokenType::GroupEnd => match next_token.lexeme.as_deref() {
-                Some("]") | Some("}") => {
-                    info!("[Parser]: encountered group end, exiting from construct_expr");
+    fn check_starting_bracket(&mut self, stmt_type: &str) {
+        assert_eq!(
+            match self.consume().typ {
+                TokenType::GroupBegin(grp) => Some(grp),
+                _ => None,
+            },
+            Some('{'),
+            "expected an opening bracket for {} statement",
+            stmt_type
+        );
+    }
+
+    fn check_ending_bracket(&mut self, stmt_type: &str) {
+        assert_eq!(
+            match self.consume().typ {
+                TokenType::GroupEnd(grp) => Some(grp),
+                _ => None,
+            },
+            Some('}'),
+            "expected a closing bracket for {} statement",
+            stmt_type
+        );
+    }
+}
+
+trait ParseGroups {
+    fn groups(&mut self) -> Result<ParseNode, ParserError>;
+    fn function(&mut self) -> Result<ParseNode, ParserError>;
+}
+
+impl ParseGroups for Parser {
+    /// Parse tree generation for grouped constructs (functions, scopes).
+    fn groups(&mut self) -> Result<ParseNode, ParserError> {
+        let mut node = ParseNode::Scope(ScopeNode::new());
+
+        loop {
+            let next = self.peek();
+            let body = match next.typ {
+                // type categories
+                typ if typ.is_specifier() => self.decl_stmt(false)?,
+                typ if typ.is_literal() => {
+                    let result = self.expr(0)?;
+                    self.consume();
+                    result
+                }
+                typ if typ.is_control() => self.control()?,
+                // delineators
+                TokenType::GroupBegin(val) => match val {
+                    '{' => self.groups()?,
+                    _ => return Err(ParserError::new("illegal group begin")),
+                },
+                TokenType::GroupEnd(_) => {
+                    // should be closing bracket for scope
+                    self.check_ending_bracket("scope");
                     break;
                 }
-                _ => return Err(ParserError::new("unexpected group end token")),
-            },
-            TokenType::Separator => {
-                if let Some(val) = &next_token.lexeme {
-                    match val.as_str() {
-                        ";" | "," => break, // let caller handle consuming
-                        _ => return Err(ParserError::new("unexpected separator")),
-                    }
+                // others
+                TokenType::Return => self.return_stmt()?,
+                TokenType::EOF => {
+                    break;
                 }
-            }
-            TokenType::EOF => break,
-            _ => {}
+                // illegal keywords
+                TokenType::Function => {
+                    return Err(ParserError::new(
+                        "illegal expression. Cannot define a function within another function",
+                    ))
+                }
+                TokenType::Type(val) => {
+                    error!("[Parser]: found token {}", val);
+                    return Err(ParserError::new("illegal expression. Misplaced token type"));
+                }
+                TokenType::Separator(val) => {
+                    error!("[Parser]: found token {}", val);
+                    return Err(ParserError::new("illegal expression. Misplaced token type"));
+                }
+                _ => unreachable!(),
+            };
+            node.push_body(body)?;
+        }
+        Ok(node)
+    }
+
+    /// Constructs a function node.
+    fn function(&mut self) -> Result<ParseNode, ParserError> {
+        match self.consume().typ {
+            TokenType::Function => {}
+            _ => return Err(ParserError::new("Illegal keyword")),
         }
 
-        let next_token_lexeme: Option<String> = match next_token_type {
-            TokenType::GroupBegin => {
-                match next_token.lexeme.as_deref() {
-                    Some("[") => {
+        let id_tok = self.consume();
+        let id = match id_tok.typ {
+            TokenType::Identifier(id) => id,
+            _ => return Err(ParserError::new("Functions must have an identifier symbol")),
+        };
+
+        assert_eq!(
+            self.consume().get_char(),
+            Some('{'),
+            "function declaration must have parameter list (even if empty)"
+        );
+
+        let mut args: Vec<ParseNode> = Vec::new();
+        while self.peek().get_char() != Some('}') {
+            args.push(self.decl_stmt(true)?);
+            if self.peek().get_char() == Some(',') {
+                self.consume();
+            }
+        }
+
+        assert_eq!(
+            self.consume().get_char(),
+            Some('}'),
+            "parameter list missing closing brackets"
+        );
+
+        let ret_tok = self.consume();
+        let ret = match ret_tok.typ {
+            TokenType::Type(typ) => typ,
+            _ => {
+                return Err(ParserError::new(
+                    "function must have return type. If no return, use void",
+                ))
+            }
+        };
+
+        // function body
+        self.check_starting_bracket("function");
+        let body = self.groups()?;
+
+        Ok(ParseNode::Function(FunctionNode::new(id, ret, args, body)))
+    }
+}
+
+/// Single-use trait to group parser methods that construct expression nodes.
+trait ParseExpr {
+    fn expr(&mut self, min_power: usize) -> Result<ParseNode, ParserError>;
+    fn function_call(&mut self, value: &String) -> Result<ParseNode, ParserError>;
+}
+
+impl ParseExpr for Parser {
+    /// Pratt parsing for expressions. Adapted from this
+    /// [great article](https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html)
+    /// by matklad.
+    fn expr(&mut self, min_power: usize) -> Result<ParseNode, ParserError> {
+        let token = self.consume();
+        match token.typ {
+            TokenType::Function | TokenType::Return | TokenType::EOF => {
+                return Err(ParserError::new(
+                    "Invalid lexer value. Possibly unsupported?",
+                ))
+            }
+            _ => {}
+        }
+        let mut id_val: String = Default::default();
+
+        let mut lhs: ParseNode = match &token.typ {
+            TokenType::Boolean(val) => ParseNode::Constant(ConstantNode::Bool(*val)),
+            TokenType::Integer(val) => ParseNode::Constant(ConstantNode::Int(*val)),
+            TokenType::Decimal(val) => ParseNode::Constant(ConstantNode::Float(*val)),
+            TokenType::Identifier(val) => {
+                id_val = val.clone();
+                match self.peek().typ {
+                    TokenType::GroupBegin(grp) => match grp {
+                        '(' => self.function_call(val)?,
+                        _ => unreachable!(), // todo: panic!
+                    },
+                    _ => ParseNode::Value(Value::new(val)),
+                }
+            }
+            TokenType::Operator(val) => {
+                let ((), r_bp) = pre_binding_power(val).unwrap_or_default();
+                let rhs = self.expr(r_bp)?;
+                ParseNode::Unary(UnaryNode::new(val.clone(), rhs))
+            }
+            TokenType::GroupBegin(val) => match val {
+                '(' => {
+                    let lhs = self.expr(0)?;
+                    assert!(matches!(self.consume().get_char(), Some(')')));
+                    lhs
+                }
+                _ => return Err(ParserError::new("possibly incorrect group begin placement")),
+            },
+            _ => {
+                error!("[Parser]: found token type {}", token.typ);
+                return Err(ParserError::new("unsupported parser type."));
+            }
+        };
+
+        loop {
+            let next = self.peek();
+            match next.typ {
+                TokenType::GroupEnd(val) => match val {
+                    ']' | '}' => {
+                        info!("[Parser]: encountered group end, exiting from self.expr");
+                        break;
+                    }
+                    _ => return Err(ParserError::new("unexpected group end token")),
+                },
+                TokenType::Separator(val) => match val {
+                    ';' | ',' => break, // let caller handle consuming
+                    _ => return Err(ParserError::new("unexpected separator")),
+                },
+                TokenType::EOF => break,
+                _ => {}
+            }
+
+            let next_lexeme: Option<String> = match &next.typ {
+                TokenType::Operator(val) => Some(val.clone()),
+                TokenType::GroupBegin(val) => match val {
+                    '[' => {
                         let (l_bp, r_bp) = (36, 37);
                         if l_bp < min_power {
                             break;
                         }
-                        _ = tokens.consume(); // [
-                        let index = construct_expr(tokens, r_bp)?;
-                        assert_eq!(tokens.consume().lexeme.as_deref(), Some("]"));
+                        _ = self.consume(); // [
+                        let index = self.expr(r_bp)?;
+                        assert_eq!(self.consume().get_char(), Some(']'));
 
-                        lhs = ParseNode::Binary(BinaryNode::new(
-                            Token::new(TokenType::Operator, "[]"),
-                            lhs,
-                            index,
-                        ));
+                        lhs = ParseNode::Binary(BinaryNode::new("[]".to_string(), lhs, index));
                         continue;
                     }
-                    Some("(") => {
-                        lhs = parse_func_call(tokens, value)?;
+                    '(' => {
+                        assert_ne!(id_val, String::default());
+                        lhs = self.function_call(&id_val)?;
                         continue;
                     }
                     _ => break,
+                },
+                _ => {
+                    warn!("[Parser]: {}", next.typ);
+                    return Err(ParserError::new(
+                        "Bad, unsupported, or unrecognised lexer value.",
+                    ));
+                }
+            };
+
+            if let Some(value) = next_lexeme {
+                if let Some((l_bp, r_bp)) = set_binding_power(&value) {
+                    if l_bp < min_power {
+                        break;
+                    }
+                    _ = self.consume();
+                    let rhs = self.expr(r_bp)?;
+                    lhs = ParseNode::Binary(BinaryNode::new(value, lhs, rhs));
+                    continue;
                 }
             }
-            TokenType::Operator => tokens.peek().lexeme.clone(),
+            break;
+        }
+        Ok(lhs)
+    }
+
+    /// Parses a function call.
+    fn function_call(&mut self, value: &String) -> Result<ParseNode, ParserError> {
+        _ = self.consume(); // (
+        let mut args = Vec::new();
+
+        // todo: make this more functional
+        // while typ == TokenType::GroupBegin && val == ')'
+        while match self.peek().typ {
+            TokenType::GroupBegin(val) => !matches!(val, ')'),
+            _ => true,
+        } {
+            args.push(self.expr(0)?);
+            if match self.peek().typ {
+                TokenType::Separator(sep) => matches!(sep, ','),
+                _ => false,
+            } {
+                self.consume();
+            }
+        }
+        _ = self.consume(); // )
+
+        Ok(ParseNode::FunctionCall(FunctionCallNode::new(
+            ParseNode::Value(Value::new(value)),
+            args,
+        )))
+    }
+}
+
+trait ParseStmt {
+    fn return_stmt(&mut self) -> Result<ParseNode, ParserError>;
+    fn decl_stmt(&mut self, function: bool) -> Result<ParseNode, ParserError>;
+}
+
+impl ParseStmt for Parser {
+    fn return_stmt(&mut self) -> Result<ParseNode, ParserError> {
+        // return token
+        let ret = self.consume();
+        match ret.typ {
+            TokenType::Return => {}
+            _ => return Err(ParserError::new("expected return statement")),
+        };
+
+        // parse next statement
+        let next = self.peek();
+        let expr = match next.typ {
+            TokenType::Separator(sep) => {
+                assert_eq!(
+                    sep,
+                    ';',
+                    "invalid separator used for void return. Only semi-colons are permitted for void returns"
+                );
+                None
+            }
             _ => {
-                warn!("[Parser]: {}", next_token_type);
-                return Err(ParserError::new(
-                    "Bad, unsupported, or unrecognised lexer value.",
-                ));
+                let result = Some(self.expr(0)?);
+                assert_eq!(
+                    match self.consume().typ {
+                        TokenType::Separator(sep) => {
+                            Some(sep)
+                        }
+                        _ => None,
+                    },
+                    Some(';'),
+                    "invalid separator. lines should end with semi-colons"
+                );
+                result
             }
         };
 
-        if let Some(value) = next_token_lexeme {
-            if let Some((l_bp, r_bp)) = set_binding_power(&value) {
-                if l_bp < min_power {
-                    break;
-                }
-                _ = tokens.consume();
-                let rhs = construct_expr(tokens, r_bp)?;
-                lhs = ParseNode::Binary(BinaryNode::new(next_token, lhs, rhs));
-                continue;
-            }
-        }
-        break;
+        Ok(ParseNode::Return(ReturnNode::new(expr)))
     }
-    Ok(lhs)
+
+    /// Constructs a {scalar, array} declaration node.
+    /// Function flag denotes a function declaration if true.
+    fn decl_stmt(&mut self, function: bool) -> Result<ParseNode, ParserError> {
+        let specifier = self.consume();
+
+        let typ_tok = self.consume();
+        let typ = match typ_tok.typ {
+            TokenType::Type(val) => val,
+            _ => return Err(ParserError::new("expected type after specifier")),
+        };
+
+        // check if array decl
+        let result = if self.peek().get_char() == Some('[') {
+            _ = self.consume(); // [
+            let size = self.expr(0)?;
+            assert_eq!(
+                self.consume().get_char(),
+                Some(']'),
+                "an array dereference must be closed by a corresponding square bracket"
+            );
+
+            let id_tok = self.consume();
+            let id = match id_tok.typ {
+                TokenType::Identifier(id) => Some(id),
+                _ => None,
+            };
+            assert!(id.is_some(), "symbol definition should be named");
+
+            let init = if !function {
+                _ = self.consume(); // =
+                Some(self.expr(0)?)
+            } else {
+                None
+            };
+
+            let node = ArrayDeclNode::new(specifier, typ, init, size, id.unwrap_or_default());
+
+            Ok(ParseNode::ArrDecl(node))
+        } else {
+            let id_tok = self.consume();
+            let id = match id_tok.typ {
+                TokenType::Identifier(id) => Some(id),
+                _ => None,
+            };
+            assert!(id.is_some(), "symbol definition should be named");
+
+            let init = if !function {
+                _ = self.consume(); // =
+                Some(self.expr(0)?)
+            } else {
+                None
+            };
+            let node = ScalarDeclNode::new(specifier, typ, init, id.unwrap_or_default());
+            Ok(ParseNode::ScalarDecl(node))
+        }?;
+
+        if !function {
+            assert_eq!(
+                self.consume().get_char(),
+                Some(';'),
+                "declaration must end with a semicolon"
+            );
+        }
+        Ok(result)
+    }
+}
+
+trait ParseControl {
+    fn control(&mut self) -> Result<ParseNode, ParserError>;
+    fn control_if(&mut self) -> Result<ParseNode, ParserError>;
+    fn control_for(&mut self) -> Result<ParseNode, ParserError>;
+    fn control_while(&mut self) -> Result<ParseNode, ParserError>;
+}
+
+impl ParseControl for Parser {
+    /// Entry point for all control-flow and looping mechanisms.
+    fn control(&mut self) -> Result<ParseNode, ParserError> {
+        let token = self.consume();
+
+        match token.typ {
+            TokenType::If => self.control_if(),
+            TokenType::While => self.control_while(),
+            TokenType::For => self.control_for(),
+            TokenType::Continue | TokenType::Break => {
+                Ok(ParseNode::LoopControl(LoopControlNode::new(token)))
+            }
+            _ => Err(ParserError::new(
+                "unknown control/loop statement or mismatched order",
+            )),
+        }
+    }
+
+    fn control_if(&mut self) -> Result<ParseNode, ParserError> {
+        self.check_starting_bracket("if");
+        let condition = self.expr(0)?;
+        self.check_ending_bracket("if");
+
+        let then = self.groups()?;
+
+        let mut node = ControlNode::new(condition, then);
+
+        // elif branches
+        while matches!(self.peek().typ, TokenType::Elif) {
+            _ = self.consume(); // elif
+
+            self.check_starting_bracket("elif");
+            let elif_condition = self.expr(0)?;
+            self.check_ending_bracket("elif");
+
+            let elif_then = self.groups()?;
+            node.push_elif(elif_condition, elif_then);
+        }
+
+        // else branch
+        if matches!(self.peek().typ, TokenType::Else) {
+            _ = self.consume(); // else
+
+            self.check_starting_bracket("else");
+            let else_then = self.groups()?;
+            self.check_ending_bracket("else");
+
+            node.set_else(else_then);
+        }
+
+        Ok(ParseNode::Control(node))
+    }
+
+    fn control_for(&mut self) -> Result<ParseNode, ParserError> {
+        self.check_starting_bracket("for");
+        let pre = self.expr(0)?;
+        assert!(
+            matches!(self.consume().get_char(), Some(';')),
+            "must end in semi-colon"
+        );
+
+        let cond = self.expr(0)?;
+        assert!(
+            matches!(self.consume().get_char(), Some(';')),
+            "must end in semi-colon"
+        );
+        let post = self.expr(0)?;
+        self.check_ending_bracket("for");
+
+        // then
+        self.check_starting_bracket("for");
+        let then = self.groups()?;
+        self.check_ending_bracket("for");
+
+        let node = ForNode::new(pre, cond, post, then);
+        Ok(ParseNode::For(node))
+    }
+
+    fn control_while(&mut self) -> Result<ParseNode, ParserError> {
+        // condition
+        self.check_starting_bracket("while");
+        let cond = self.expr(0)?;
+        self.check_ending_bracket("while");
+
+        // then
+        self.check_starting_bracket("while");
+        let then = self.groups()?;
+        self.check_ending_bracket("while");
+
+        // construct and return
+        let node = WhileNode::new(cond, then);
+        Ok(ParseNode::While(node))
+    }
 }
 
 enum Associativity {
@@ -206,8 +583,8 @@ fn get_operator_info(op: &str) -> Option<(Associativity, usize)> {
 }
 
 /// Pratt parsing binding power for binary operations.
-fn set_binding_power(op_str: &str) -> Option<(usize, usize)> {
-    if let Some((assoc, pow)) = get_operator_info(op_str) {
+fn set_binding_power(op: &str) -> Option<(usize, usize)> {
+    if let Some((assoc, pow)) = get_operator_info(op) {
         match assoc {
             Associativity::Left => Some((pow, pow + 1)),
             Associativity::Right => Some((pow, pow - 1)),
@@ -243,309 +620,3 @@ pub enum ParseNode {
     Scope(ScopeNode),
     None,
 }
-
-/// Constant node. Stores value
-pub enum ConstantNode {
-    Bool(bool),
-    Int(i64),
-    Float(f64),
-}
-
-fn parse_func_call(tokens: &mut Lexer, value: &String) -> Result<ParseNode, ParserError> {
-    _ = tokens.consume(); // (
-    let mut args = Vec::new();
-
-    while tokens.peek().lexeme.as_deref() != Some(")") {
-        args.push(construct_expr(tokens, 0)?);
-        if tokens.peek().lexeme.as_deref() == Some(",") {
-            tokens.consume();
-        }
-    }
-    _ = tokens.consume(); // )
-    Ok(ParseNode::FunctionCall(FunctionCallNode::new(
-        ParseNode::Value(Value::new(value)),
-        args,
-    )))
-}
-
-/// Constructs a function node.
-fn construct_func(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
-    _ = tokens.consume(); // fn
-    let mut node = FunctionNode::new(&tokens.consume());
-    assert_eq!(
-        tokens.consume().lexeme.as_deref(),
-        Some("{"),
-        "function declaration must have parameter list (even if empty)"
-    );
-
-    // function arguments
-    while tokens.peek().lexeme.as_deref() != Some("}") {
-        node.push_param(construct_decl(tokens, true)?);
-        if tokens.peek().lexeme.as_deref() == Some(",") {
-            tokens.consume(); // ,
-        }
-    }
-    assert_eq!(
-        tokens.consume().lexeme.as_deref(),
-        Some("}"),
-        "parameter list missing closing brackets"
-    );
-
-    let return_type = tokens.consume();
-    if return_type.token_type != TokenType::Type {
-        return Err(ParserError::new(
-            "function must have return type. If no return, use void",
-        ));
-    }
-    node.set_return(return_type);
-
-    // function body
-    check_starting_bracket(tokens, "function");
-    node.set_body(construct_group_expr(tokens)?);
-    Ok(ParseNode::Function(node))
-}
-
-/// Constructs a {scalar, array} declaration node.
-/// Function flag denotes a function declaration if true.
-fn construct_decl(tokens: &mut Lexer, function: bool) -> Result<ParseNode, ParserError> {
-    let specifier = tokens.consume();
-    let type_token = tokens.consume();
-    assert_eq!(
-        type_token.token_type,
-        TokenType::Type,
-        "after a variable specifier, there must be a type annotation"
-    );
-
-    // check if array decl
-    let result = if tokens.peek().lexeme.as_deref() == Some("[") {
-        _ = tokens.consume(); // [
-        let size = construct_expr(tokens, 0)?;
-        assert_eq!(
-            tokens.consume().lexeme.as_deref(),
-            Some("]"),
-            "an array dereference must be closed by a corresponding square bracket"
-        );
-        let id = tokens.consume();
-        assert_eq!(id.token_type, TokenType::Identifier);
-
-        let init = if !function {
-            _ = tokens.consume(); // =
-            Some(construct_expr(tokens, 0)?)
-        } else {
-            None
-        };
-        let node = ArrayDeclNode::new(
-            specifier,
-            type_token,
-            init,
-            size,
-            id.lexeme.unwrap_or_default(),
-        );
-        Ok(ParseNode::ArrDecl(node))
-    } else {
-        let id = tokens.consume();
-        assert_eq!(id.token_type, TokenType::Identifier);
-        let init = if !function {
-            _ = tokens.consume(); // =
-            Some(construct_expr(tokens, 0)?)
-        } else {
-            None
-        };
-        let node = ScalarDeclNode::new(specifier, type_token, init, id.lexeme.unwrap_or_default());
-        Ok(ParseNode::ScalarDecl(node))
-    }?;
-
-    if !function {
-        assert_eq!(
-            tokens.consume().lexeme.as_deref(),
-            Some(";"),
-            "declaration must end with a semicolon"
-        );
-    }
-    Ok(result)
-}
-
-fn construct_return(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
-    _ = tokens.consume(); // return
-    let next = tokens.peek();
-    let expr: Option<ParseNode> = match next.token_type {
-        TokenType::Separator => {
-            assert_eq!(
-                tokens.consume().lexeme.as_deref(),
-                Some(";"),
-                "invalid separator used for void return. Only semi-colons are permitted for void returns"
-            );
-            None
-        }
-        _ => {
-            let result = Some(construct_expr(tokens, 0)?);
-            assert_eq!(
-                tokens.consume().lexeme.as_deref(),
-                Some(";"),
-                "invalid separator. lines should end with semi-colons"
-            );
-            result
-        }
-    };
-    Ok(ParseNode::Return(ReturnNode::new(expr)))
-}
-
-pub struct WhileNode {
-    pub cond: Box<ParseNode>,
-    pub then: Box<ParseNode>,
-}
-
-fn construct_control(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
-    let token = tokens.consume();
-    match token.lexeme.as_deref() {
-        Some("if") => {
-            check_starting_bracket(tokens, "if");
-            let condition = construct_expr(tokens, 0)?;
-            check_ending_bracket(tokens, "if");
-            let then = construct_group_expr(tokens)?;
-            let mut node = ControlNode::new(condition, then);
-
-            // elif branches
-            while tokens.peek().lexeme.as_deref() == Some("elif") {
-                _ = tokens.consume(); // elif
-                check_starting_bracket(tokens, "elif");
-                let elif_condition = construct_expr(tokens, 0)?;
-                check_ending_bracket(tokens, "elif");
-                let elif_then = construct_group_expr(tokens)?;
-                node.push_elif(elif_condition, elif_then);
-            }
-
-            // else branch
-            if tokens.peek().lexeme.as_deref() == Some("else") {
-                _ = tokens.consume(); // else
-                check_starting_bracket(tokens, "else");
-                let else_then = construct_group_expr(tokens)?;
-                check_ending_bracket(tokens, "else");
-                node.set_else(else_then);
-            }
-            Ok(ParseNode::Control(node))
-        }
-        Some("while") => {
-            check_starting_bracket(tokens, "while");
-            let cond = construct_expr(tokens, 0)?;
-            check_ending_bracket(tokens, "while");
-
-            // then
-            check_starting_bracket(tokens, "while");
-            let then = construct_group_expr(tokens)?;
-            check_ending_bracket(tokens, "while");
-
-            // construct
-            let node = WhileNode::new(cond, then);
-            Ok(ParseNode::While(node))
-        }
-        Some("for") => {
-            check_starting_bracket(tokens, "for");
-            let pre = construct_expr(tokens, 0)?;
-            assert_eq!(tokens.consume().lexeme.as_deref(), Some(";"));
-            let cond = construct_expr(tokens, 0)?;
-            assert_eq!(tokens.consume().lexeme.as_deref(), Some(";"));
-            let post = construct_expr(tokens, 0)?;
-            check_ending_bracket(tokens, "for");
-
-            // then
-            check_starting_bracket(tokens, "for");
-            let then = construct_group_expr(tokens)?;
-            check_ending_bracket(tokens, "for");
-
-            let node = ForNode::new(pre, cond, post, then);
-            Ok(ParseNode::For(node))
-        }
-        Some("continue") | Some("break") => Ok(ParseNode::LoopControl(LoopControlNode::new(token))),
-        _ => Err(ParserError::new(
-            "unknown control/loop statement or mismatched order",
-        )),
-    }
-}
-
-trait Group {
-    fn push_body(&mut self, node: ParseNode) -> Result<(), ParserError>;
-}
-
-impl Group for ParseNode {
-    fn push_body(&mut self, node: ParseNode) -> Result<(), ParserError> {
-        match self {
-            ParseNode::Scope(n) => n.push_body(node),
-            _ => {
-                return Err(ParserError::new(
-                    "Internal error: unexpected parser node type.",
-                ))
-            }
-        }
-        Ok(())
-    }
-}
-
-/// Parse tree generation for grouped constructs (functions, scopes).
-fn construct_group_expr(tokens: &mut Lexer) -> Result<ParseNode, ParserError> {
-    let mut node = ParseNode::Scope(ScopeNode::new());
-    loop {
-        let next = tokens.peek();
-        node.push_body(match next.token_type {
-            TokenType::Specifier => construct_decl(tokens, false)?,
-            TokenType::GroupBegin => match next.lexeme.as_deref() {
-                Some("{") => construct_group_expr(tokens)?,
-                _ => return Err(ParserError::new("illegal group begin")),
-            },
-            TokenType::Function => {
-                return Err(ParserError::new(
-                    "illegal expression. Cannot define a function within another function",
-                ))
-            }
-            TokenType::Type | TokenType::Separator => {
-                error!("[Parser]: found token {}", next.lexeme.unwrap());
-                return Err(ParserError::new("illegal expression. Misplaced token type"));
-            }
-            TokenType::Integer
-            | TokenType::Decimal
-            | TokenType::Identifier
-            | TokenType::Operator
-            | TokenType::Boolean => {
-                let result = construct_expr(tokens, 0)?;
-                tokens.consume();
-                result
-            }
-            TokenType::Return => construct_return(tokens)?,
-            TokenType::None => {
-                return Err(ParserError::new(
-                    "Internal parser error: received unexpected None token type",
-                ))
-            }
-            TokenType::EOF => {
-                break;
-            }
-            TokenType::Control => construct_control(tokens)?,
-            TokenType::GroupEnd => {
-                // should be closing bracket for scope
-                check_ending_bracket(tokens, "scope");
-                break;
-            }
-        })
-        .expect("Internal error: parser panicked on group expression construction");
-    }
-    Ok(node)
-}
-
-fn check_starting_bracket(tokens: &mut Lexer, stmt_type: &str) {
-    assert_eq!(
-        tokens.consume().lexeme.as_deref(),
-        Some("{"),
-        "expected an opening bracket for {} statement",
-        stmt_type
-    );
-}
-
-fn check_ending_bracket(tokens: &mut Lexer, stmt_type: &str) {
-    assert_eq!(
-        tokens.consume().lexeme.as_deref(),
-        Some("}"),
-        "expected a closing bracket for {} statement",
-        stmt_type
-    );
-}
-

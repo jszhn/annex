@@ -1,7 +1,7 @@
 use crate::ast::types::*;
 use crate::ast::util::AstError;
-use crate::parse::structs::Value;
-use crate::parse::{ConstantNode, ParseNode, Parser};
+use crate::parse::structs::{ConstantNode, Value};
+use crate::parse::{ParseNode, ParseTree};
 
 pub mod types;
 mod util;
@@ -11,7 +11,7 @@ pub struct Ast {
 }
 
 impl Ast {
-    pub fn new(parse_tree: Parser) -> Result<Ast, AstError> {
+    pub fn new(parse_tree: ParseTree) -> Result<Ast, AstError> {
         let parse_head = parse_tree.head;
         Ok(Ast {
             head: convert_parse_tree(parse_head)?,
@@ -26,10 +26,9 @@ impl Ast {
 fn convert_parse_tree(parse_node: ParseNode) -> Result<AstNode, AstError> {
     match parse_node {
         ParseNode::Function(node) => {
-            let name = node.name.lexeme.unwrap_or_default();
-            let return_type =
-                Type::from_token(node.return_type.lexeme.unwrap_or_default().as_str())
-                    .ok_or_else(|| AstError::new("Error: invalid return type"))?;
+            let name = node.name;
+            let return_type = Type::from_token(node.return_type.as_str())
+                .ok_or_else(|| AstError::new("Error: invalid return type"))?;
             let params = node
                 .params
                 .into_iter()
@@ -75,7 +74,7 @@ fn convert_parse_tree(parse_node: ParseNode) -> Result<AstNode, AstError> {
             Ok(AstNode::Function(node))
         }
         ParseNode::Binary(node) => {
-            let op = BinaryOperator::from_token(&node.op.lexeme.unwrap_or_default())
+            let op = BinaryOperator::from_token(&node.op)
                 .ok_or_else(|| AstError::new("Invalid binary operator"))?;
             let right = convert_parse_tree(*node.right)?;
 
@@ -104,7 +103,7 @@ fn convert_parse_tree(parse_node: ParseNode) -> Result<AstNode, AstError> {
             }
         }
         ParseNode::Unary(node) => {
-            let op = UnaryOperator::from_token(&node.op.lexeme.unwrap_or_default())
+            let op = UnaryOperator::from_token(&node.op)
                 .ok_or_else(|| AstError::new("Invalid unary operator"))?;
             let expr = convert_parse_tree(*node.operand)?;
 
@@ -124,10 +123,9 @@ fn convert_parse_tree(parse_node: ParseNode) -> Result<AstNode, AstError> {
             Ok(AstNode::Literal(literal))
         }
         ParseNode::ScalarDecl(node) => {
-            let storage = StorageClass::from_token(&node.specifier.lexeme.unwrap_or_default())
+            let storage = StorageClass::from_token(&node.specifier.to_string())
                 .ok_or_else(|| AstError::new("Invalid storage class"))?;
-            let typ = Type::from_token(&node._type.lexeme.unwrap_or_default())
-                .ok_or_else(|| AstError::new("Invalid type"))?;
+            let typ = Type::from_token(&node.typ).ok_or_else(|| AstError::new("Invalid type"))?;
             let init = match node.initialiser {
                 Some(n) => Some(Box::new(convert_parse_tree(*n)?)),
                 None => None,
@@ -142,10 +140,9 @@ fn convert_parse_tree(parse_node: ParseNode) -> Result<AstNode, AstError> {
             Ok(AstNode::VarDecl(node))
         }
         ParseNode::ArrDecl(node) => {
-            let storage = StorageClass::from_token(&node.specifier.lexeme.unwrap_or_default())
+            let storage = StorageClass::from_token(&node.specifier.to_string())
                 .ok_or_else(|| AstError::new("Invalid storage class"))?;
-            let typ = Type::from_token(&node._type.lexeme.unwrap_or_default())
-                .ok_or_else(|| AstError::new("Invalid type"))?;
+            let typ = Type::from_token(&node.typ).ok_or_else(|| AstError::new("Invalid type"))?;
             let size = convert_parse_tree(*node.size)?;
             let _ = match node.initialiser {
                 Some(node) => Some(Box::new(convert_parse_tree(*node)?)),
@@ -223,9 +220,9 @@ fn convert_parse_tree(parse_node: ParseNode) -> Result<AstNode, AstError> {
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(AstNode::Block(BlockNode { elems: stmts }))
         }
-        ParseNode::LoopControl(node) => match node._type.lexeme.as_deref() {
-            Some("continue") => Ok(AstNode::Continue),
-            Some("break") => Ok(AstNode::Break),
+        ParseNode::LoopControl(node) => match node.typ.typ.to_string().as_str() {
+            "continue" => Ok(AstNode::Continue),
+            "break" => Ok(AstNode::Break),
             _ => Err(AstError::new("Invalid loop control lexeme")),
         },
         ParseNode::FunctionCall(node) => {

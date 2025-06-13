@@ -4,11 +4,11 @@ use std::fmt::Error;
 
 use log::info;
 
-use crate::ast::{Ast, types};
 use crate::ast::types::{
     ArrDeclNode, AstNode, BinaryOperator, BlockNode, ForNode, FunctionCallNode, FunctionNode,
     IfNode, UnaryOperator, VarDeclNode, WhileNode,
 };
+use crate::ast::{types, Ast};
 
 pub struct Inter {
     pub basic_blocks: Vec<BasicBlock>,
@@ -47,7 +47,7 @@ pub enum IR {
     },
     LoadImm {
         dest: Temp,
-        value: i64,
+        value: u64,
     },
     LoadFloat {
         dest: Temp,
@@ -385,7 +385,7 @@ impl IRGenerator {
                     },
                     types::Literal::Bool(b) => IR::LoadImm {
                         dest: temp.clone(),
-                        value: *b as i64,
+                        value: *b as u64,
                     },
                 };
                 self.push_instr(instr);

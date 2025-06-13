@@ -1,8 +1,8 @@
 use std::error::Error;
 use std::iter::zip;
 
-use annex::lexer::Lexer;
-use annex::parse::Parser;
+use annex::lexer::TokenStream;
+use annex::parse::ParseTree;
 
 #[test]
 fn parse_test() -> Result<(), Box<dyn Error>> {
@@ -25,8 +25,8 @@ fn test_parse_file(input_path: &str, expected_path: &str) -> Result<(), Box<dyn 
     let input_file = std::fs::read_to_string(input_path)?;
     let expected_file = std::fs::read_to_string(expected_path)?;
 
-    let tokens = Lexer::new(input_file)?;
-    let parse_tree = Parser::new(tokens)?;
+    let tokens = TokenStream::new(input_file)?;
+    let parse_tree = ParseTree::new(tokens)?;
 
     let output = parse_tree.print(false);
     let actual_lines: Vec<&str> = output
