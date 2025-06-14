@@ -89,13 +89,13 @@ pub enum TokenType {
 /// pattern-matching later in the compiler pipeline, especially for parsing.
 impl TokenType {
     pub fn is_literal(&self) -> bool {
-        match self {
+        matches!(
+            self,
             TokenType::Identifier(_)
-            | TokenType::Integer(_)
-            | TokenType::Decimal(_)
-            | TokenType::Boolean(_) => true,
-            _ => false,
-        }
+                | TokenType::Integer(_)
+                | TokenType::Decimal(_)
+                | TokenType::Boolean(_)
+        )
     }
 
     pub fn is_control(&self) -> bool {
@@ -114,24 +114,22 @@ impl TokenType {
     }
 
     pub fn is_specifier(&self) -> bool {
-        match self {
-            TokenType::Variable | TokenType::Constant | TokenType::Volatile => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            TokenType::Variable | TokenType::Constant | TokenType::Volatile
+        )
     }
 }
 
 /// State object for lexical analysis.
 struct Lexer<'a> {
     chars: std::iter::Peekable<std::str::CharIndices<'a>>,
-    line_num: usize,
 }
 
 impl<'a> Lexer<'a> {
-    fn new(file: &'a String) -> Self {
+    fn new(file: &'a str) -> Self {
         Self {
             chars: file.char_indices().peekable(),
-            line_num: 1,
         }
     }
 
@@ -148,10 +146,10 @@ impl<'a> Lexer<'a> {
 
         let typ = if let Some(op_typ) = self.id_multichar_operator(c) {
             op_typ
-        } else if let Some(single_typ) = id_singlechar(c.clone()) {
+        } else if let Some(single_typ) = id_singlechar(c) {
             single_typ
         } else {
-            id_multichar_lexeme(self.construct_lexeme(c.clone()).as_str())
+            id_multichar_lexeme(self.construct_lexeme(c).as_str())
         };
         Some(Token::new(typ))
     }

@@ -1,19 +1,16 @@
 use crate::lexer::{Token, TokenStream, TokenType};
-use fs_err as fs;
 use std::fmt::{Display, Formatter};
-use std::io::Error;
-
-impl TokenStream {
-    fn to_txt(&self, path: String) -> Result<(), Error> {
-        let output = self.to_string();
-        fs::write(path, output)
-    }
-}
 
 impl Display for TokenStream {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        let _ = self.vector.iter().rev().map(|tok| write!(f, "{}\n", tok));
-        Ok(())
+        let str = self
+            .vector
+            .iter()
+            .rev()
+            .map(|tok| tok.to_string())
+            .collect::<Vec<_>>()
+            .join("\n");
+        write!(f, "{}", str)
     }
 }
 
@@ -54,7 +51,7 @@ impl Display for TokenType {
             Self::GroupBegin(val) => write!(f, "group begin: {}", val),
             Self::GroupEnd(val) => write!(f, "group end: {}", val),
             // special
-            Self::EOF => write!(f, "EOF"),
+            Self::EOF => write!(f, "eof"),
         }
     }
 }
