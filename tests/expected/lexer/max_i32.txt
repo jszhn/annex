@@ -1,0 +1,32 @@
+fn
+identifier: max
+group begin: {
+const
+type: i32
+identifier: x
+separator: ,
+const
+type: i32
+identifier: y
+group end: }
+type: i32
+group begin: {
+if
+group begin: {
+identifier: x
+operator: >
+identifier: y
+group end: }
+group begin: {
+return
+identifier: x
+separator: ;
+group end: }
+else
+group begin: {
+return
+identifier: y
+separator: ;
+group end: }
+group end: }
+eof
