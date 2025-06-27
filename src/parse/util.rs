@@ -1,16 +1,67 @@
 use std::fmt::{Debug, Display, Formatter};
 
-use crate::parse::{ConstantNode, ParseNode, ParseTree};
+use crate::parse::structs::ParseNode;
+use crate::parse::{ConstantNode, ParseTree};
 
+/// Error type for parser operations.
+/// Contains detailed information about parsing failures.
 pub struct ParserError {
     message: String,
+    kind: ErrorKind,
 }
 
 impl ParserError {
-    pub fn new(msg: &str) -> ParserError {
-        ParserError {
+    pub fn new(msg: &str) -> Self {
+        Self {
             message: msg.to_string(),
+            kind: ErrorKind::SyntaxError,
         }
+    }
+
+    pub fn with_kind(msg: &str, kind: ErrorKind) -> Self {
+        Self {
+            message: msg.to_string(),
+            kind,
+        }
+    }
+
+    pub fn unexpected_token(expected: &str, found: &str) -> Self {
+        Self {
+            message: format!("Expected {}, but found {}", expected, found),
+            kind: ErrorKind::UnexpectedToken,
+        }
+    }
+
+    pub fn unexpected_token_stmt(expected: &str, stmt: &str) -> Self {
+        Self {
+            message: format!("Expected {} for {} statement", expected, stmt),
+            kind: ErrorKind::UnexpectedToken,
+        }
+    }
+
+    pub fn missing_token(token: &str) -> Self {
+        Self {
+            message: format!("Expected {}, but not found", token),
+            kind: ErrorKind::MissingToken,
+        }
+    }
+
+    pub fn illegal_statement(msg: &str) -> Self {
+        Self {
+            message: msg.to_string(),
+            kind: ErrorKind::IllegalStatement,
+        }
+    }
+
+    pub fn internal_error(msg: &str) -> Self {
+        Self {
+            message: msg.to_string(),
+            kind: ErrorKind::InternalError,
+        }
+    }
+
+    pub fn kind(&self) -> &ErrorKind {
+        &self.kind
     }
 }
 
@@ -18,17 +69,44 @@ impl Debug for ParserError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ParserError")
             .field("message", &self.message)
+            .field("kind", &self.kind)
             .finish()
     }
 }
 
 impl Display for ParserError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.message)
+        write!(f, "{}: {}", self.kind, self.message)
     }
 }
 
 impl std::error::Error for ParserError {}
+
+/// Categorization of parser errors for better error handling
+#[derive(Debug)]
+pub enum ErrorKind {
+    SyntaxError,
+    UnexpectedToken,
+    MissingToken,
+    InvalidExpression,
+    IllegalStatement,
+    InvalidFunction,
+    InternalError,
+}
+
+impl Display for ErrorKind {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ErrorKind::SyntaxError => write!(f, "SyntaxError"),
+            ErrorKind::UnexpectedToken => write!(f, "UnexpectedToken"),
+            ErrorKind::MissingToken => write!(f, "MissingToken"),
+            ErrorKind::InvalidExpression => write!(f, "InvalidExpression"),
+            ErrorKind::IllegalStatement => write!(f, "IllegalStatement"),
+            ErrorKind::InvalidFunction => write!(f, "InvalidFunction"),
+            ErrorKind::InternalError => write!(f, "InternalError"),
+        }
+    }
+}
 
 impl ParseTree {
     pub fn print(&self, stdout: bool) -> String {
@@ -90,14 +168,14 @@ impl ParseNode {
             ParseNode::ScalarDecl(node) => {
                 output.push_str(&format!("{}Scalar Declaration:\n", indent_str));
                 let inner_indent = format!("{}  ", indent_str);
-                output.push_str(&format!("{}{}\n", inner_indent, node.specifier.to_string()));
+                output.push_str(&format!("{}Specifier: {}\n", inner_indent, node.specifier));
                 output.push_str(&format!("{}Type: {}\n", inner_indent, node.typ));
                 output.push_str(&format!("{}Identifier: {}\n", inner_indent, node.id));
             }
             ParseNode::ArrDecl(node) => {
                 output.push_str(&format!("{}Array Declaration:\n", indent_str));
                 let inner_indent = format!("{}  ", indent_str);
-                output.push_str(&format!("{}{}\n", inner_indent, node.specifier.to_string()));
+                output.push_str(&format!("{}Specifier: {}\n", inner_indent, node.specifier));
                 output.push_str(&format!("{}Type: {}\n", inner_indent, node.typ));
                 output.push_str(&format!("{}Size:\n", inner_indent));
                 output.push_str(&node.size.print_with_indent(indent + 2));

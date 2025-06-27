@@ -1,6 +1,23 @@
 use crate::lexer::Token;
 use crate::parse::util::ParserError;
-use crate::parse::ParseNode;
+
+pub enum ParseNode {
+    Constant(ConstantNode),
+    Function(FunctionNode),
+    FunctionCall(FunctionCallNode),
+    Binary(BinaryNode),
+    Unary(UnaryNode),
+    Value(Value),
+    ScalarDecl(ScalarDeclNode),
+    ArrDecl(ArrayDeclNode),
+    Return(ReturnNode),
+    Control(ControlNode),
+    While(WhileNode),
+    For(ForNode),
+    LoopControl(LoopControlNode), // break, continue
+    Scope(ScopeNode),
+    None,
+}
 
 impl ParseNode {
     pub fn push_body(&mut self, node: ParseNode) -> Result<(), ParserError> {

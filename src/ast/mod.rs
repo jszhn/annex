@@ -1,7 +1,7 @@
 use crate::ast::types::*;
 use crate::ast::util::AstError;
-use crate::parse::structs::{ConstantNode, Value};
-use crate::parse::{ParseNode, ParseTree};
+use crate::parse::structs::{ConstantNode, ParseNode, Value};
+use crate::parse::ParseTree;
 
 pub mod types;
 mod util;
