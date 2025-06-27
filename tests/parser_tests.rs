@@ -1,32 +1,23 @@
-use std::error::Error;
-use std::iter::zip;
-
 use annex::lexer::TokenStream;
 use annex::parse::ParseTree;
 
-#[test]
-fn parse_test() -> Result<(), Box<dyn Error>> {
-    let input_paths = vec![
-        "tests/files/process_array.ax",
-        "tests/files/more_arithmetic.ax",
-    ];
-    let expected_paths = vec![
-        "tests/files/process_array.expected",
-        "tests/files/more_arithmetic_parse.expected",
-    ];
+fn check_correct_parsing(input_path: &str, expected_path: &str, test_name: &str) {
+    let input_file = std::fs::read_to_string(input_path);
+    let expected_file = std::fs::read_to_string(expected_path);
+    assert!(
+        input_file.is_ok() && expected_file.is_ok(),
+        "Failed to read input or expected file"
+    );
+    let input_file = input_file.unwrap();
+    let expected_file = expected_file.unwrap();
 
-    for (input, expected) in zip(input_paths, expected_paths) {
-        test_parse_file(input, expected)?;
-    }
-    Ok(())
-}
+    let tokens = TokenStream::new(input_file);
+    assert!(tokens.is_ok(), "Failed to tokenize input file");
+    let tokens = tokens.unwrap();
 
-fn test_parse_file(input_path: &str, expected_path: &str) -> Result<(), Box<dyn Error>> {
-    let input_file = std::fs::read_to_string(input_path)?;
-    let expected_file = std::fs::read_to_string(expected_path)?;
-
-    let tokens = TokenStream::new(input_file)?;
-    let parse_tree = ParseTree::new(tokens)?;
+    let parse_tree = ParseTree::new(tokens);
+    assert!(parse_tree.is_ok(), "Failed to parse input file");
+    let parse_tree = parse_tree.unwrap();
 
     let output = parse_tree.print(false);
     let actual_lines: Vec<&str> = output
@@ -38,7 +29,29 @@ fn test_parse_file(input_path: &str, expected_path: &str) -> Result<(), Box<dyn 
         .filter(|line| !line.trim().is_empty())
         .collect();
 
-    assert_eq!(actual_lines, expected_lines);
+    assert_eq!(
+        actual_lines, expected_lines,
+        "Test: {}\nDifference in parse tree\nExpected:\n{:#?}\nActual:\n{:#?}",
+        test_name, actual_lines, expected_lines
+    );
+}
 
-    Ok(())
+#[test]
+/// This test checks the parsing of multiple symbol declarations and a simple function.
+fn test_symbol_decls() {
+    let test_name = "test_symbol_decls";
+    let input_path = "tests/files/process_array.ax";
+    let expected_path = "tests/expected/parse/process_array.txt";
+
+    check_correct_parsing(input_path, expected_path, test_name);
+}
+
+#[test]
+/// This test checks the parsing of a single function with a for loop and arithmetic.
+fn test_function_loop() {
+    let test_name = "test_function_loop";
+    let input_path = "tests/files/more_arithmetic.ax";
+    let expected_path = "tests/expected/parse/more_arithmetic.txt";
+
+    check_correct_parsing(input_path, expected_path, test_name);
 }

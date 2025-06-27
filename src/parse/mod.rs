@@ -361,7 +361,7 @@ impl ParseStmt for Parser {
         // parse next statement
         let next = self.peek();
         let expr = match next.typ {
-            TokenType::Separator(sep) => {
+            TokenType::Separator(_sep) => {
                 // todo: check if this breaks
                 self.check_char(';')?;
                 None

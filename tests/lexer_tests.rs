@@ -14,7 +14,7 @@ fn verify_tokens(source: String, expected_tokens: Vec<&str>, test_name: &str) {
 
     assert_eq!(
         actual_tokens, expected_tokens,
-        "\nTest: {}\nDifference in tokens.\nExpected:\n{:#?}\nActual:\n{:#?}",
+        "Test: {}\nDifference in tokens\nExpected:\n{:#?}\nActual:\n{:#?}",
         test_name, expected_tokens, actual_tokens
     );
 }
