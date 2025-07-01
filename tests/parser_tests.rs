@@ -1,9 +1,10 @@
 use annex::lexer::TokenStream;
 use annex::parse::ParseTree;
+use fs_err as fs;
 
 fn check_correct_parsing(input_path: &str, expected_path: &str, test_name: &str) {
-    let input_file = std::fs::read_to_string(input_path);
-    let expected_file = std::fs::read_to_string(expected_path);
+    let input_file = fs::read_to_string(input_path);
+    let expected_file = fs::read_to_string(expected_path);
     assert!(
         input_file.is_ok() && expected_file.is_ok(),
         "Failed to read input or expected file"

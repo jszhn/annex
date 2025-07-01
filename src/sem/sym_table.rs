@@ -80,26 +80,26 @@ impl<T> SymTable<T> {
 }
 
 pub struct VarEntry {
-    typ: Type,
-    is_array: bool,
+    _typ: Type,
+    _is_array: bool,
 }
 
 impl VarEntry {
-    pub fn new(typ: Type, is_array: bool) -> VarEntry {
-        VarEntry { typ, is_array }
+    pub fn new(_typ: Type, _is_array: bool) -> VarEntry {
+        VarEntry { _typ, _is_array }
     }
 }
 
 pub struct FuncEntry<'a> {
-    return_type: Type,
-    params: &'a Vec<ParamNode>,
+    _return_type: Type,
+    _params: &'a Vec<ParamNode>,
 }
 
 impl<'a> FuncEntry<'a> {
-    pub fn new(return_type: Type, params: &'a Vec<ParamNode>) -> FuncEntry<'a> {
+    pub fn new(_return_type: Type, _params: &'a Vec<ParamNode>) -> FuncEntry<'a> {
         FuncEntry {
-            return_type,
-            params,
+            _return_type,
+            _params,
         }
     }
 }

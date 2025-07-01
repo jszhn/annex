@@ -1,8 +1,8 @@
 use std::env;
 use std::error::Error;
+use std::process::exit;
 
 use annex::ast::Ast;
-use annex::ir::Inter;
 use annex::lexer::TokenStream;
 use annex::parse::ParseTree;
 
@@ -28,15 +28,13 @@ fn main() -> Result<(), Box<dyn Error>> {
                 "The compiler has encountered an error while parsing the file...\n\t{}",
                 e
             );
-            std::process::exit(1);
+            exit(1);
         }
     }
     let parse_tree = parse_tree?;
 
     let as_tree = Ast::new(parse_tree)?;
     as_tree.sem_analysis()?;
-    let _ir = Inter::new(as_tree)?;
-    // assembly generation
 
     Ok(())
 }

@@ -1,4 +1,4 @@
-use crate::ast::{Ast, types::AstNode};
+use crate::ast::{types::AstNode, Ast};
 use crate::sem::err::SemError;
 use crate::sem::sym_table::{FuncEntry, SymTable};
 
@@ -7,7 +7,7 @@ pub mod sym_table;
 
 impl Ast {
     pub fn sem_analysis(&self) -> Result<(), SemError> {
-        let func_table = fill_func_table(self)?;
+        let _func_table = fill_func_table(self)?;
         Ok(())
     }
 }
