@@ -256,9 +256,9 @@ pub struct ScopeNode {
 }
 
 impl ScopeNode {
-    pub fn new() -> Self {
+    pub fn new(statements: Vec<ParseNode>) -> Self {
         Self {
-            contents: Vec::new(),
+            contents: statements,
         }
     }
 

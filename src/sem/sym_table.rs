@@ -8,10 +8,15 @@ pub struct ScopedSymTable {
     num_scopes: u32,
 }
 
+impl Default for ScopedSymTable {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ScopedSymTable {
     pub fn new() -> ScopedSymTable {
-        let mut scopes = Vec::new();
-        scopes.push(SymTable::new(0));
+        let scopes = vec![SymTable::new(0)];
         ScopedSymTable {
             scopes,
             num_scopes: 1,

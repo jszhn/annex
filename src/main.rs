@@ -24,10 +24,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     match parse_tree {
         Ok(_) => {}
         Err(e) => {
-            error!(
-                "The compiler has encountered an error while parsing the file...\n\t{}",
-                e
-            );
+            error!("The compiler has encountered an error while parsing the file...\n\t{e}");
             exit(1);
         }
     }

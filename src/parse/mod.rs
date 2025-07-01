@@ -46,7 +46,7 @@ impl Parser {
 
     /// Parses the program's global scope. Only either function or symbol definitions are permitted here.
     fn start(&mut self) -> Result<ParseNode, ParserError> {
-        let mut node = ParseNode::Scope(ScopeNode::new());
+        let mut vec: Vec<ParseNode> = Vec::new();
 
         loop {
             let next = self.peek();
@@ -61,11 +61,11 @@ impl Parser {
                     ));
                 }
             };
-            node.push_body(stmt)?;
+            vec.push(stmt);
         }
 
         self.consume(); // EOF
-        Ok(node)
+        Ok(ParseNode::Scope(ScopeNode::new(vec)))
     }
 
     fn check_starting_bracket(&mut self, stmt_type: &str) -> Result<(), ParserError> {
@@ -98,7 +98,7 @@ trait ParseGroups {
 impl ParseGroups for Parser {
     /// Parse tree generation for grouped constructs (functions, scopes).
     fn groups(&mut self) -> Result<ParseNode, ParserError> {
-        let mut node = ParseNode::Scope(ScopeNode::new());
+        let mut statements = Vec::new();
 
         loop {
             let next = self.peek();
@@ -137,18 +137,18 @@ impl ParseGroups for Parser {
                     ))
                 }
                 TokenType::Type(val) => {
-                    error!("[Parser]: found token {}", val);
+                    error!("[Parser]: found token {val}");
                     return Err(ParserError::new("illegal expression. Misplaced token type"));
                 }
                 TokenType::Separator(val) => {
-                    error!("[Parser]: found token {}", val);
+                    error!("[Parser]: found token {val}");
                     return Err(ParserError::new("illegal expression. Misplaced token type"));
                 }
                 _ => unreachable!(),
             };
-            node.push_body(body)?;
+            statements.push(body);
         }
-        Ok(node)
+        Ok(ParseNode::Scope(ScopeNode::new(statements)))
     }
 
     /// Constructs a function node.

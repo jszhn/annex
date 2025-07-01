@@ -32,27 +32,23 @@ impl Debug for SemError {
 impl Display for SemError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            SemError::BadReturnType(msg) => write!(f, "Bad return type: {}", msg),
-            SemError::BadAssignment(msg) => {
-                write!(f, "Mismatched assignment type: {}", msg)
-            }
+            SemError::BadReturnType(msg) => write!(f, "Bad return type: {msg}"),
+            SemError::BadAssignment(msg) => write!(f, "Mismatched assignment type: {msg}"),
             SemError::RedefFunction(msg) => write!(
                 f,
-                "Function with same name already defined in same scope: {}",
-                msg
+                "Function with same name already defined in same scope: {msg}"
             ),
             SemError::RedefVar(msg) => write!(
                 f,
-                "Scalar or array with same name already defined in same scope: {}",
-                msg
+                "Scalar or array with same name already defined in same scope: {msg}"
             ),
             SemError::MissingFunction(msg) => {
-                write!(f, "Missing a matching function declaration: {}", msg)
+                write!(f, "Missing a matching function declaration: {msg}")
             }
             SemError::MissingVariable(msg) => {
-                write!(f, "Missing a matching variable declaration: {}", msg)
+                write!(f, "Missing a matching variable declaration: {msg}")
             }
-            SemError::InternalError(msg) => write!(f, "Internal compiler error: {}", msg),
+            SemError::InternalError(msg) => write!(f, "Internal compiler error: {msg}"),
         }
     }
 }

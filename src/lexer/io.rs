@@ -10,7 +10,7 @@ impl Display for TokenStream {
             .map(|tok| tok.to_string())
             .collect::<Vec<_>>()
             .join("\n");
-        write!(f, "{}", str)
+        write!(f, "{str}")
     }
 }
 
@@ -24,13 +24,13 @@ impl Display for TokenType {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
             // literals
-            Self::Identifier(val) => write!(f, "identifier: {}", val),
-            Self::Boolean(val) => write!(f, "boolean: {}", val),
-            Self::Integer(val) => write!(f, "integer: {}", val),
-            Self::Decimal(val) => write!(f, "decimal: {}", val),
+            Self::Identifier(val) => write!(f, "identifier: {val}"),
+            Self::Boolean(val) => write!(f, "boolean: {val}"),
+            Self::Integer(val) => write!(f, "integer: {val}"),
+            Self::Decimal(val) => write!(f, "decimal: {val}"),
             // keywords
-            Self::Type(val) => write!(f, "type: {}", val),
-            Self::Operator(val) => write!(f, "operator: {}", val),
+            Self::Type(val) => write!(f, "type: {val}"),
+            Self::Operator(val) => write!(f, "operator: {val}"),
             Self::Function => write!(f, "fn"),
             Self::Return => write!(f, "return"),
             // specifiers
@@ -47,9 +47,9 @@ impl Display for TokenType {
             Self::Continue => write!(f, "continue"),
             Self::Break => write!(f, "break"),
             // delineators
-            Self::Separator(val) => write!(f, "separator: {}", val),
-            Self::GroupBegin(val) => write!(f, "group begin: {}", val),
-            Self::GroupEnd(val) => write!(f, "group end: {}", val),
+            Self::Separator(val) => write!(f, "separator: {val}"),
+            Self::GroupBegin(val) => write!(f, "group begin: {val}"),
+            Self::GroupEnd(val) => write!(f, "group end: {val}"),
             // special
             Self::EOF => write!(f, "eof"),
         }
