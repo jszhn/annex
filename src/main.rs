@@ -6,15 +6,35 @@ use annex::ast::Ast;
 use annex::lexer::TokenStream;
 use annex::parse::ParseTree;
 
+use current_platform::COMPILED_ON;
 use fs_err as fs;
-use log::error;
+use log::{error, info};
 
 fn main() -> Result<(), Box<dyn Error>> {
     colog::init();
     let args: Vec<String> = env::args().collect();
+
+    match args.len() {
+        1 => version(),
+        _ => compile(args)?,
+    }
+
+    Ok(())
+}
+
+fn version() {
+    let rustc = rustc_version_runtime::version();
+    let rustc_version = format!("v{}.{}.{}", rustc.major, rustc.minor, rustc.patch);
+
+    info!("{}c v{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+    info!("built on {COMPILED_ON} with rustc {rustc_version}");
+    info!("usage: {}c file.ax", env!("CARGO_PKG_NAME"));
+}
+
+fn compile(args: Vec<String>) -> Result<(), Box<dyn Error>> {
     if args.len() == 1 {
-        error!("Too few arguments! Please provide at minimum a file path: annex file.ax");
-        return Err(Box::new(std::fmt::Error));
+        error!("Too few arguments! Please provide at minimum a file path...\n\tannex file.ax");
+        exit(1);
     }
     let file_path = &args[1];
     let file_contents = fs::read_to_string(file_path)?;
