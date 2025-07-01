@@ -1,0 +1,30 @@
+Scope:
+  Function: max
+  Return type: i32
+  Parameters:
+    Scalar Declaration:
+      Specifier: const
+      Type: i32
+      Identifier: x
+    Scalar Declaration:
+      Specifier: const
+      Type: i32
+      Identifier: y
+  Body:
+    Scope:
+      If Statement:
+        Condition:
+          Binary Operation:
+            Operator: >
+            Left:
+              Value: x
+            Right:
+              Value: y
+        Then:
+          Scope:
+            Return:
+              Value: x
+        Else:
+          Scope:
+            Return:
+              Value: y

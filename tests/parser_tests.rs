@@ -16,6 +16,9 @@ fn check_correct_parsing(input_path: &str, expected_path: &str, test_name: &str)
     let tokens = tokens.unwrap();
 
     let parse_tree = ParseTree::new(tokens);
+    if parse_tree.is_err() {
+        eprintln!("Error parsing input file: {:?}", parse_tree.as_ref().err());
+    }
     assert!(parse_tree.is_ok(), "Failed to parse input file");
     let parse_tree = parse_tree.unwrap();
 
@@ -32,7 +35,7 @@ fn check_correct_parsing(input_path: &str, expected_path: &str, test_name: &str)
     assert_eq!(
         actual_lines, expected_lines,
         "Test: {}\nDifference in parse tree\nExpected:\n{:#?}\nActual:\n{:#?}",
-        test_name, actual_lines, expected_lines
+        test_name, expected_lines, actual_lines
     );
 }
 
@@ -52,6 +55,16 @@ fn test_function_loop() {
     let test_name = "test_function_loop";
     let input_path = "tests/files/more_arithmetic.ax";
     let expected_path = "tests/expected/parse/more_arithmetic.txt";
+
+    check_correct_parsing(input_path, expected_path, test_name);
+}
+
+#[test]
+/// This test checks a simple if statement.
+fn test_max() {
+    let test_name = "test_max";
+    let input_path = "tests/files/max_i32.ax";
+    let expected_path = "tests/expected/parse/max_i32.txt";
 
     check_correct_parsing(input_path, expected_path, test_name);
 }

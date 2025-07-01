@@ -32,8 +32,8 @@ Scope:
     Scope:
       Return:
         Binary Operation:
-        Operator: []
-        Left:
-          Value: input
-        Right:
-          Constant: int(50)
+          Operator: []
+          Left:
+            Value: input
+          Right:
+            Constant: int(50)

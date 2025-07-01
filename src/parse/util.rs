@@ -150,11 +150,12 @@ impl ParseNode {
             }
             ParseNode::Binary(node) => {
                 output.push_str(&format!("{}Binary Operation:\n", indent_str));
-                output.push_str(&format!("{}Operator: {}\n", indent_str, node.op));
-                output.push_str(&format!("{}Left:\n", indent_str));
-                output.push_str(&node.left.print_with_indent(indent + 1));
-                output.push_str(&format!("{}Right:\n", indent_str));
-                output.push_str(&node.right.print_with_indent(indent + 1));
+                let inner_indent = format!("{}  ", indent_str);
+                output.push_str(&format!("{}Operator: {}\n", inner_indent, node.op));
+                output.push_str(&format!("{}Left:\n", inner_indent));
+                output.push_str(&node.left.print_with_indent(indent + 2));
+                output.push_str(&format!("{}Right:\n", inner_indent));
+                output.push_str(&node.right.print_with_indent(indent + 2));
             }
             ParseNode::Unary(node) => {
                 output.push_str(&format!("{}Unary Operation:\n", indent_str));
@@ -186,48 +187,51 @@ impl ParseNode {
                 if let Some(expr) = &node.expr {
                     output.push_str(&expr.print_with_indent(indent + 1));
                 } else {
-                    output.push_str(&format!("{}void\n", indent_str));
+                    output.push_str(&format!("{}  void\n", indent_str));
                 }
             }
             ParseNode::Control(node) => {
                 output.push_str(&format!("{}If Statement:\n", indent_str));
-                output.push_str(&format!("{}Condition:\n", indent_str));
-                output.push_str(&node._if.cond.print_with_indent(indent + 1));
-                output.push_str(&format!("{}Then:\n", indent_str));
-                output.push_str(&node._if.then.print_with_indent(indent + 1));
+                let inner_indent = format!("{}  ", indent_str);
+                output.push_str(&format!("{}Condition:\n", inner_indent));
+                output.push_str(&node._if.cond.print_with_indent(indent + 2));
+                output.push_str(&format!("{}Then:\n", inner_indent));
+                output.push_str(&node._if.then.print_with_indent(indent + 2));
 
                 if let Some(elif_branches) = &node.elif {
-                    output.push_str(&format!("{}Elif Branches:\n", indent_str));
+                    output.push_str(&format!("{}Elif Branches:\n", inner_indent));
                     for elif in elif_branches {
-                        output.push_str(&format!("{}Condition:\n", indent_str));
-                        output.push_str(&elif.cond.print_with_indent(indent + 1));
-                        output.push_str(&format!("{}Then:\n", indent_str));
-                        output.push_str(&elif.then.print_with_indent(indent + 1));
+                        output.push_str(&format!("{}  Condition:\n", inner_indent));
+                        output.push_str(&elif.cond.print_with_indent(indent + 3));
+                        output.push_str(&format!("{}  Then:\n", inner_indent));
+                        output.push_str(&elif.then.print_with_indent(indent + 3));
                     }
                 }
 
                 if let Some(else_branch) = &node.el {
-                    output.push_str(&format!("{}Else:\n", indent_str));
-                    output.push_str(&else_branch.print_with_indent(indent + 1));
+                    output.push_str(&format!("{}Else:\n", inner_indent));
+                    output.push_str(&else_branch.print_with_indent(indent + 2));
                 }
             }
             ParseNode::While(node) => {
                 output.push_str(&format!("{}While Loop:\n", indent_str));
-                output.push_str(&format!("{}Condition:\n", indent_str));
-                output.push_str(&node.cond.print_with_indent(indent + 1));
-                output.push_str(&format!("{}Body:\n", indent_str));
-                output.push_str(&node.then.print_with_indent(indent + 1));
+                let inner_indent = format!("{}  ", indent_str);
+                output.push_str(&format!("{}Condition:\n", inner_indent));
+                output.push_str(&node.cond.print_with_indent(indent + 2));
+                output.push_str(&format!("{}Body:\n", inner_indent));
+                output.push_str(&node.then.print_with_indent(indent + 2));
             }
             ParseNode::For(node) => {
                 output.push_str(&format!("{}For Loop:\n", indent_str));
-                output.push_str(&format!("{}Initialization:\n", indent_str));
-                output.push_str(&node.pre.print_with_indent(indent + 1));
-                output.push_str(&format!("{}Condition:\n", indent_str));
-                output.push_str(&node.cond.print_with_indent(indent + 1));
-                output.push_str(&format!("{}Update:\n", indent_str));
-                output.push_str(&node.post.print_with_indent(indent + 1));
-                output.push_str(&format!("{}Body:\n", indent_str));
-                output.push_str(&node.then.print_with_indent(indent + 1));
+                let inner_indent = format!("{}  ", indent_str);
+                output.push_str(&format!("{}Initialization:\n", inner_indent));
+                output.push_str(&node.pre.print_with_indent(indent + 2));
+                output.push_str(&format!("{}Condition:\n", inner_indent));
+                output.push_str(&node.cond.print_with_indent(indent + 2));
+                output.push_str(&format!("{}Update:\n", inner_indent));
+                output.push_str(&node.post.print_with_indent(indent + 2));
+                output.push_str(&format!("{}Body:\n", inner_indent));
+                output.push_str(&node.then.print_with_indent(indent + 2));
             }
             ParseNode::Scope(node) => {
                 output.push_str(&format!("{}Scope:\n", indent_str));
@@ -236,7 +240,7 @@ impl ParseNode {
                 }
             }
             ParseNode::LoopControl(node) => {
-                output.push_str(&format!("{}{}\n", indent_str, node.typ.to_string()));
+                output.push_str(&format!("{}{}\n", indent_str, node.typ));
             }
             ParseNode::Constant(constant) => match constant {
                 ConstantNode::Bool(b) => {

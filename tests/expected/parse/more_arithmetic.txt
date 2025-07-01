@@ -17,53 +17,53 @@ Scope:
         Type: u32
         Identifier: upper
       For Loop:
-      Initialization:
-        Binary Operation:
-        Operator: =
-        Left:
-          Value: i
-        Right:
-          Constant: int(0)
-      Condition:
-        Binary Operation:
-        Operator: <
-        Left:
-          Value: i
-        Right:
-          Value: upper
-      Update:
-        Binary Operation:
-        Operator: =
-        Left:
-          Value: i
-        Right:
+        Initialization:
           Binary Operation:
-          Operator: +
-          Left:
-            Value: i
-          Right:
-            Constant: int(1)
-      Body:
-        Scope:
-          Binary Operation:
-          Operator: =
-          Left:
-            Value: x
-          Right:
-            Binary Operation:
-            Operator: +
+            Operator: =
             Left:
-              Value: x
-            Right:
-              Value: y
-          Binary Operation:
-          Operator: =
-          Left:
-            Value: y
-          Right:
-            Binary Operation:
-            Operator: *
-            Left:
-              Value: x
-            Right:
               Value: i
+            Right:
+              Constant: int(0)
+        Condition:
+          Binary Operation:
+            Operator: <
+            Left:
+              Value: i
+            Right:
+              Value: upper
+        Update:
+          Binary Operation:
+            Operator: =
+            Left:
+              Value: i
+            Right:
+              Binary Operation:
+                Operator: +
+                Left:
+                  Value: i
+                Right:
+                  Constant: int(1)
+        Body:
+          Scope:
+            Binary Operation:
+              Operator: =
+              Left:
+                Value: x
+              Right:
+                Binary Operation:
+                  Operator: +
+                  Left:
+                    Value: x
+                  Right:
+                    Value: y
+            Binary Operation:
+              Operator: =
+              Left:
+                Value: y
+              Right:
+                Binary Operation:
+                  Operator: *
+                  Left:
+                    Value: x
+                  Right:
+                    Value: i

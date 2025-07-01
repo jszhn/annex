@@ -102,6 +102,7 @@ impl ParseGroups for Parser {
 
         loop {
             let next = self.peek();
+
             let body = match next.typ {
                 // type categories
                 typ if typ.is_specifier() => self.decl_stmt(false)?,
@@ -113,7 +114,10 @@ impl ParseGroups for Parser {
                 typ if typ.is_control() => self.control()?,
                 // delineators
                 TokenType::GroupBegin(val) => match val {
-                    '{' => self.groups()?,
+                    '{' => {
+                        self.consume();
+                        self.groups()?
+                    }
                     _ => return Err(ParserError::new("illegal group begin")),
                 },
                 TokenType::GroupEnd(_) => {
@@ -470,6 +474,7 @@ impl ParseControl for Parser {
         let condition = self.expr(0)?;
         self.check_ending_bracket("if")?;
 
+        self.check_starting_bracket("if")?;
         let then = self.groups()?;
 
         let mut node = ControlNode::new(condition, then);
