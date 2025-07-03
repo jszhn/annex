@@ -24,11 +24,12 @@ impl ParseNode {
         match self {
             ParseNode::Scope(n) => n.push_body(node),
             _ => {
-                return Err(ParserError::new(
-                    "Internal error: unexpected parser node type.",
+                return Err(ParserError::internal_error(
+                    "tried to push unexpected parse node type",
                 ))
             }
         }
+
         Ok(())
     }
 }

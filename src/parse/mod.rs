@@ -118,7 +118,7 @@ impl ParseGroups for Parser {
                         self.consume();
                         self.groups()?
                     }
-                    _ => return Err(ParserError::new("illegal group begin")),
+                    _ => return Err(ParserError::unexpected_token("{", &val.to_string())),
                 },
                 TokenType::GroupEnd(_) => {
                     // should be closing bracket for scope
@@ -132,22 +132,23 @@ impl ParseGroups for Parser {
                 }
                 // illegal keywords
                 TokenType::Function => {
-                    return Err(ParserError::new(
-                        "illegal expression. Cannot define a function within another function",
-                    ))
+                    return Err(ParserError::illegal_statement(
+                        "cannot define a function within another function",
+                    ));
                 }
                 TokenType::Type(val) => {
                     error!("[Parser]: found token {val}");
-                    return Err(ParserError::new("illegal expression. Misplaced token type"));
+                    return Err(ParserError::invalid_expression("misplaced token type"));
                 }
                 TokenType::Separator(val) => {
                     error!("[Parser]: found token {val}");
-                    return Err(ParserError::new("illegal expression. Misplaced token type"));
+                    return Err(ParserError::invalid_expression("misplaced token type"));
                 }
                 _ => unreachable!(),
             };
             statements.push(body);
         }
+
         Ok(ParseNode::Scope(ScopeNode::new(statements)))
     }
 
@@ -165,7 +166,11 @@ impl ParseGroups for Parser {
         let id_tok = self.consume();
         let id = match id_tok.typ {
             TokenType::Identifier(id) => id,
-            _ => return Err(ParserError::new("Functions must have an identifier symbol")),
+            _ => {
+                return Err(ParserError::syntax_error(
+                    "functions must have an identifier symbol",
+                ))
+            }
         };
 
         // parameter list begin
@@ -213,8 +218,8 @@ impl ParseExpr for Parser {
         let token = self.consume();
         match token.typ {
             TokenType::Function | TokenType::Return | TokenType::EOF => {
-                return Err(ParserError::new(
-                    "Invalid lexer value. Possibly unsupported?",
+                return Err(ParserError::invalid_expression(
+                    "invalid lexer value for expression parsing",
                 ))
             }
             _ => {}
@@ -244,11 +249,13 @@ impl ParseExpr for Parser {
                     self.check_char(')')?;
                     lhs
                 }
-                _ => return Err(ParserError::new("possibly incorrect group begin placement")),
+                _ => return Err(ParserError::unexpected_token("(", &val.to_string())),
             },
             _ => {
                 error!("[Parser]: found token type {}", token.typ);
-                return Err(ParserError::new("unsupported parser type."));
+                return Err(ParserError::syntax_error(
+                    "bad, unsupported, or unrecognised lexer value",
+                ));
             }
         };
 
@@ -260,11 +267,11 @@ impl ParseExpr for Parser {
                         info!("[Parser]: encountered group end, exiting from self.expr");
                         break;
                     }
-                    _ => return Err(ParserError::new("unexpected group end token")),
+                    _ => return Err(ParserError::unexpected_token("] or }", &val.to_string())),
                 },
                 TokenType::Separator(val) => match val {
                     ';' | ',' => break, // let caller handle consuming
-                    _ => return Err(ParserError::new("unexpected separator")),
+                    _ => return Err(ParserError::unexpected_token("; or ,", &val.to_string())),
                 },
                 TokenType::EOF => break,
                 _ => {}
@@ -294,8 +301,8 @@ impl ParseExpr for Parser {
                 },
                 _ => {
                     warn!("[Parser]: {}", next.typ);
-                    return Err(ParserError::new(
-                        "Bad, unsupported, or unrecognised lexer value.",
+                    return Err(ParserError::syntax_error(
+                        "bad, unsupported, or unrecognised lexer value",
                     ));
                 }
             };

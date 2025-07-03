@@ -11,17 +11,10 @@ pub struct ParserError {
 }
 
 impl ParserError {
-    pub fn new(msg: &str) -> Self {
+    pub fn syntax_error(msg: &str) -> Self {
         Self {
             message: msg.to_string(),
             kind: ErrorKind::SyntaxError,
-        }
-    }
-
-    pub fn with_kind(msg: &str, kind: ErrorKind) -> Self {
-        Self {
-            message: msg.to_string(),
-            kind,
         }
     }
 
@@ -46,6 +39,13 @@ impl ParserError {
         }
     }
 
+    pub fn invalid_expression(msg: &str) -> Self {
+        Self {
+            message: msg.to_string(),
+            kind: ErrorKind::InvalidExpression,
+        }
+    }
+
     pub fn illegal_statement(msg: &str) -> Self {
         Self {
             message: msg.to_string(),
@@ -58,10 +58,6 @@ impl ParserError {
             message: msg.to_string(),
             kind: ErrorKind::InternalError,
         }
-    }
-
-    pub fn kind(&self) -> &ErrorKind {
-        &self.kind
     }
 }
 
@@ -90,7 +86,6 @@ pub enum ErrorKind {
     MissingToken,
     InvalidExpression,
     IllegalStatement,
-    InvalidFunction,
     InternalError,
 }
 
@@ -102,7 +97,6 @@ impl Display for ErrorKind {
             ErrorKind::MissingToken => write!(f, "MissingToken"),
             ErrorKind::InvalidExpression => write!(f, "InvalidExpression"),
             ErrorKind::IllegalStatement => write!(f, "IllegalStatement"),
-            ErrorKind::InvalidFunction => write!(f, "InvalidFunction"),
             ErrorKind::InternalError => write!(f, "InternalError"),
         }
     }
