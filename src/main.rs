@@ -1,5 +1,4 @@
 use std::env;
-use std::error::Error;
 use std::process::exit;
 
 use annex::ast::Ast;
@@ -10,16 +9,14 @@ use current_platform::COMPILED_ON;
 use fs_err as fs;
 use log::{error, info};
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() {
     colog::init();
     let args: Vec<String> = env::args().collect();
 
     match args.len() {
         1 => version(),
-        _ => compile(args)?,
+        _ => compile(args),
     }
-
-    Ok(())
 }
 
 fn version() {
@@ -31,14 +28,27 @@ fn version() {
     info!("usage: {}c file.ax", env!("CARGO_PKG_NAME"));
 }
 
-fn compile(args: Vec<String>) -> Result<(), Box<dyn Error>> {
-    if args.len() == 1 {
-        error!("Too few arguments! Please provide at minimum a file path...\n\tannex file.ax");
-        exit(1);
-    }
+fn compile(args: Vec<String>) {
     let file_path = &args[1];
-    let file_contents = fs::read_to_string(file_path)?;
-    let tokens = TokenStream::new(file_contents)?;
+    let file_contents = fs::read_to_string(file_path);
+    match file_contents {
+        Ok(_) => {}
+        Err(e) => {
+            error!("The compiler has encountered an error while reading the file...\n\t{e}");
+            exit(1);
+        }
+    };
+    let file_contents = file_contents.unwrap();
+
+    let tokens = TokenStream::new(file_contents);
+    match tokens {
+        Ok(_) => {}
+        Err(e) => {
+            error!("The compiler has encountered an error while lexing the file...\n\t{e}");
+            exit(1);
+        }
+    }
+    let tokens = tokens.unwrap();
 
     let parse_tree = ParseTree::new(tokens);
     match parse_tree {
@@ -48,10 +58,24 @@ fn compile(args: Vec<String>) -> Result<(), Box<dyn Error>> {
             exit(1);
         }
     }
-    let parse_tree = parse_tree?;
+    let parse_tree = parse_tree.unwrap();
 
-    let as_tree = Ast::new(parse_tree)?;
-    as_tree.sem_analysis()?;
+    let as_tree = Ast::new(parse_tree);
+    match as_tree {
+        Ok(_) => {}
+        Err(e) => {
+            error!("The compiler has encountered an error while generating the AST...\n\t{e}");
+            exit(1);
+        }
+    }
+    let as_tree = as_tree.unwrap();
 
-    Ok(())
+    let sem_result = as_tree.sem_analysis();
+    match sem_result {
+        Ok(_) => {}
+        Err(e) => {
+            error!("The compiler has encountered an error while performing semantic analysis...\n\t{e}");
+            exit(1);
+        }
+    }
 }
