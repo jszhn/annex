@@ -410,11 +410,7 @@ impl ParseStmt for Parser {
             self.check_char(']')?;
 
             let id_tok = self.consume();
-            let id = match id_tok.typ {
-                TokenType::Identifier(id) => Some(id),
-                _ => None,
-            };
-            assert!(id.is_some(), "symbol definition should be named");
+            let id = get_id(&id_tok)?;
 
             let init = if !function {
                 _ = self.consume(); // =
@@ -423,16 +419,12 @@ impl ParseStmt for Parser {
                 None
             };
 
-            let node = ArrayDeclNode::new(specifier, typ, init, size, id.unwrap_or_default());
+            let node = ArrayDeclNode::new(specifier, typ, init, size, id);
 
             Ok(ParseNode::ArrDecl(node))
         } else {
             let id_tok = self.consume();
-            let id = match id_tok.typ {
-                TokenType::Identifier(id) => Some(id),
-                _ => None,
-            };
-            assert!(id.is_some(), "symbol definition should be named");
+            let id = get_id(&id_tok)?;
 
             let init = if !function {
                 _ = self.consume(); // =
@@ -440,7 +432,7 @@ impl ParseStmt for Parser {
             } else {
                 None
             };
-            let node = ScalarDeclNode::new(specifier, typ, init, id.unwrap_or_default());
+            let node = ScalarDeclNode::new(specifier, typ, init, id);
             Ok(ParseNode::ScalarDecl(node))
         }?;
 
@@ -448,6 +440,16 @@ impl ParseStmt for Parser {
             self.check_char(';')?;
         }
         Ok(result)
+    }
+}
+
+fn get_id(token: &Token) -> Result<String, ParserError> {
+    match &token.typ {
+        TokenType::Identifier(id) => Ok(id.clone()),
+        _ => Err(ParserError::unexpected_token(
+            "identifier",
+            &token.typ.to_string(),
+        )),
     }
 }
 
