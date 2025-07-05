@@ -1,0 +1,11 @@
+fn expr{const i32 x, const i32 y, const u8 bitshift} bool {
+  var bool result = false;
+  result = x == y << bitshift or x == y >> bitshift or
+           x == y + bitshift  or x == y - bitshift  or
+           x == y * bitshift  or x == y / bitshift  or
+           x == y & bitshift  or x == y | bitshift  or
+           x == y ^ bitshift  or
+           x == y and bitshift != 0 or x == y or
+           x != y and bitshift != 0;
+  return result;
+}

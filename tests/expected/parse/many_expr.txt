@@ -1,0 +1,210 @@
+Scope:
+  Function: expr
+  Return type: bool
+  Parameters:
+    Scalar Declaration:
+      Specifier: const
+      Type: i32
+      Identifier: x
+    Scalar Declaration:
+      Specifier: const
+      Type: i32
+      Identifier: y
+    Scalar Declaration:
+      Specifier: const
+      Type: u8
+      Identifier: bitshift
+  Body:
+    Scope:
+      Scalar Declaration:
+        Specifier: var
+        Type: bool
+        Identifier: result
+      Binary Operation:
+        Operator: =
+        Left:
+          Value: result
+        Right:
+          Binary Operation:
+            Operator: or
+            Left:
+              Binary Operation:
+                Operator: or
+                Left:
+                  Binary Operation:
+                    Operator: or
+                    Left:
+                      Binary Operation:
+                        Operator: or
+                        Left:
+                          Binary Operation:
+                            Operator: or
+                            Left:
+                              Binary Operation:
+                                Operator: or
+                                Left:
+                                  Binary Operation:
+                                    Operator: or
+                                    Left:
+                                      Binary Operation:
+                                        Operator: or
+                                        Left:
+                                          Binary Operation:
+                                            Operator: or
+                                            Left:
+                                              Binary Operation:
+                                                Operator: or
+                                                Left:
+                                                  Binary Operation:
+                                                    Operator: or
+                                                    Left:
+                                                      Binary Operation:
+                                                        Operator: ==
+                                                        Left:
+                                                          Value: x
+                                                        Right:
+                                                          Binary Operation:
+                                                            Operator: <<
+                                                            Left:
+                                                              Value: y
+                                                            Right:
+                                                              Value: bitshift
+                                                    Right:
+                                                      Binary Operation:
+                                                        Operator: ==
+                                                        Left:
+                                                          Value: x
+                                                        Right:
+                                                          Binary Operation:
+                                                            Operator: >>
+                                                            Left:
+                                                              Value: y
+                                                            Right:
+                                                              Value: bitshift
+                                                Right:
+                                                  Binary Operation:
+                                                    Operator: ==
+                                                    Left:
+                                                      Value: x
+                                                    Right:
+                                                      Binary Operation:
+                                                        Operator: +
+                                                        Left:
+                                                          Value: y
+                                                        Right:
+                                                          Value: bitshift
+                                            Right:
+                                              Binary Operation:
+                                                Operator: ==
+                                                Left:
+                                                  Value: x
+                                                Right:
+                                                  Binary Operation:
+                                                    Operator: -
+                                                    Left:
+                                                      Value: y
+                                                    Right:
+                                                      Value: bitshift
+                                        Right:
+                                          Binary Operation:
+                                            Operator: ==
+                                            Left:
+                                              Value: x
+                                            Right:
+                                              Binary Operation:
+                                                Operator: *
+                                                Left:
+                                                  Value: y
+                                                Right:
+                                                  Value: bitshift
+                                    Right:
+                                      Binary Operation:
+                                        Operator: ==
+                                        Left:
+                                          Value: x
+                                        Right:
+                                          Binary Operation:
+                                            Operator: /
+                                            Left:
+                                              Value: y
+                                            Right:
+                                              Value: bitshift
+                                Right:
+                                  Binary Operation:
+                                    Operator: &
+                                    Left:
+                                      Binary Operation:
+                                        Operator: ==
+                                        Left:
+                                          Value: x
+                                        Right:
+                                          Value: y
+                                    Right:
+                                      Value: bitshift
+                            Right:
+                              Binary Operation:
+                                Operator: |
+                                Left:
+                                  Binary Operation:
+                                    Operator: ==
+                                    Left:
+                                      Value: x
+                                    Right:
+                                      Value: y
+                                Right:
+                                  Value: bitshift
+                        Right:
+                          Binary Operation:
+                            Operator: ^
+                            Left:
+                              Binary Operation:
+                                Operator: ==
+                                Left:
+                                  Value: x
+                                Right:
+                                  Value: y
+                            Right:
+                              Value: bitshift
+                    Right:
+                      Binary Operation:
+                        Operator: and
+                        Left:
+                          Binary Operation:
+                            Operator: ==
+                            Left:
+                              Value: x
+                            Right:
+                              Value: y
+                        Right:
+                          Binary Operation:
+                            Operator: !=
+                            Left:
+                              Value: bitshift
+                            Right:
+                              Constant: int(0)
+                Right:
+                  Binary Operation:
+                    Operator: ==
+                    Left:
+                      Value: x
+                    Right:
+                      Value: y
+            Right:
+              Binary Operation:
+                Operator: and
+                Left:
+                  Binary Operation:
+                    Operator: !=
+                    Left:
+                      Value: x
+                    Right:
+                      Value: y
+                Right:
+                  Binary Operation:
+                    Operator: !=
+                    Left:
+                      Value: bitshift
+                    Right:
+                      Constant: int(0)
+      Return:
+        Value: result

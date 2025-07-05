@@ -69,3 +69,24 @@ fn test_max() {
 
     check_correct_parsing(input_path, expected_path, test_name);
 }
+
+#[test]
+/// This test checks for Pratt parsing of complex expressions.
+fn test_expr_parsing() {
+    let test_name = "test_expr_parsing";
+    let input_path = "tests/files/many_expr.ax";
+    let expected_path = "tests/expected/parse/many_expr.txt";
+
+    check_correct_parsing(input_path, expected_path, test_name);
+}
+
+#[test]
+/// This test checks for more Pratt parsing of complex expressions, including
+/// unary operators and precedence.
+fn test_expr_parsing2() {
+    let test_name = "test_expr_parsing2";
+    let input_path = "tests/files/many_expr2.ax";
+    let expected_path = "tests/expected/parse/many_expr2.txt";
+
+    check_correct_parsing(input_path, expected_path, test_name);
+}

@@ -150,9 +150,10 @@ impl ParseNode {
             }
             ParseNode::Unary(node) => {
                 output.push_str(&format!("{indent_str}Unary Operation:\n"));
-                output.push_str(&format!("{indent_str}Operator: {}\n", node.op));
-                output.push_str(&format!("{indent_str}Operand:\n"));
-                output.push_str(&node.operand.print_with_indent(indent + 1));
+                let inner_indent = format!("{indent_str}  ");
+                output.push_str(&format!("{inner_indent}Operator: {}\n", node.op));
+                output.push_str(&format!("{inner_indent}Operand:\n"));
+                output.push_str(&node.operand.print_with_indent(indent + 2));
             }
             ParseNode::Value(node) => {
                 output.push_str(&format!("{indent_str}Value: {}\n", node.lexeme));

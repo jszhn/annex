@@ -593,8 +593,8 @@ fn set_binding_power(op: &str) -> Option<(usize, usize)> {
 /// Pratt parsing binding power for unary pre-operations.
 fn pre_binding_power(op: &str) -> Option<((), usize)> {
     match op {
-        "+" | "-" => Some(((), 3)),
-        "~" => Some(((), 20)),
+        "+" | "-" => Some(((), 35)),
+        "~" => Some(((), 36)),
         _ => None,
     }
 }

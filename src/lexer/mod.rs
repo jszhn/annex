@@ -185,8 +185,6 @@ impl<'a> Lexer<'a> {
             ('!', '=') => "!=",
             ('<', '=') => "<=",
             ('>', '=') => ">=",
-            ('&', '&') => "&&",
-            ('|', '|') => "||",
             _ => return None,
         };
 
@@ -262,6 +260,7 @@ fn id_multichar_lexeme(lexeme: &str) -> TokenType {
         .cloned()
         .or_else(|| id_type(lexeme))
         .or_else(|| id_literal(lexeme))
+        .or_else(|| id_operator(lexeme))
         .unwrap_or(TokenType::Identifier(lexeme.to_string()))
 }
 
@@ -290,5 +289,13 @@ fn id_literal(lexeme: &str) -> Option<TokenType> {
         Some(TokenType::Boolean(val))
     } else {
         None
+    }
+}
+
+fn id_operator(lexeme: &str) -> Option<TokenType> {
+    match lexeme {
+        "and" | "&&" => Some(TokenType::Operator("and".to_string())),
+        "or" | "||" => Some(TokenType::Operator("or".to_string())),
+        _ => None,
     }
 }
