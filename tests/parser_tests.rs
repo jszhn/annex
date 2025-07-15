@@ -90,3 +90,13 @@ fn test_expr_parsing2() {
 
     check_correct_parsing(input_path, expected_path, test_name);
 }
+
+#[test]
+/// This test ensures expressions with parentheses are parsed correctly.
+fn test_expr_parsing3() {
+    let test_name = "test_expr_parsing3";
+    let input_path = "tests/files/many_expr3.ax";
+    let expected_path = "tests/expected/parse/many_expr2.txt";
+
+    check_correct_parsing(input_path, expected_path, test_name);
+}
