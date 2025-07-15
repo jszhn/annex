@@ -1,6 +1,7 @@
 use crate::lexer::{Token, TokenStream, TokenType};
 use crate::parse::structs::*;
 use crate::parse::util::ParserError;
+
 use log::{error, info, warn};
 use std::error::Error;
 
@@ -263,11 +264,16 @@ impl ParseExpr for Parser {
             let next = self.peek();
             match next.typ {
                 TokenType::GroupEnd(val) => match val {
-                    ']' | '}' => {
+                    ']' | '}' | ')' => {
                         info!("[Parser]: encountered group end, exiting from self.expr");
                         break;
                     }
-                    _ => return Err(ParserError::unexpected_token("] or }", &val.to_string())),
+                    _ => {
+                        return Err(ParserError::unexpected_token(
+                            "] or } or )",
+                            &val.to_string(),
+                        ))
+                    }
                 },
                 TokenType::Separator(val) => match val {
                     ';' | ',' => break, // let caller handle consuming
