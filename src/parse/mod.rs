@@ -1,11 +1,11 @@
 use crate::lexer::{Token, TokenStream, TokenType};
-use crate::parse::structs::*;
+use crate::parse::types::*;
 use crate::parse::util::ParserError;
 
 use log::{error, info, warn};
 use std::error::Error;
 
-pub mod structs;
+pub mod types;
 mod util;
 
 pub struct ParseTree {

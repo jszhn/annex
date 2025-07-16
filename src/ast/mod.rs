@@ -1,6 +1,6 @@
 use crate::ast::types::*;
 use crate::ast::util::AstError;
-use crate::parse::structs::{ConstantNode, ParseNode, Value};
+use crate::parse::types::{ConstantNode, ParseNode, Value};
 use crate::parse::ParseTree;
 
 pub mod types;

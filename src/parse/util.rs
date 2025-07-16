@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Display, Formatter};
 
-use crate::parse::structs::ParseNode;
+use crate::parse::types::ParseNode;
 use crate::parse::{ConstantNode, ParseTree};
 
 /// Error type for parser operations.
