@@ -1,43 +1,99 @@
-use crate::ast::{types::AstNode, Ast};
+use std::collections::HashMap;
+
+use crate::ast::{types::*, Ast};
 use crate::sem::err::SemError;
-use crate::sem::sym_table::{FuncEntry, SymTable};
+use crate::sem::table::{FuncEntry, FuncTable, ScopedSymTable, SymTable};
 
 mod err;
-pub mod sym_table;
+pub mod table;
 
+/// Contains semantic analysis methods for the AST.
 impl Ast {
-    pub fn sem_analysis(&self) -> Result<(), SemError> {
-        let _func_table = fill_func_table(self)?;
-        Ok(())
+    pub fn sem_analysis(&self) -> Result<(), Vec<SemError>> {
+        let mut analyser = SemanticAnalyser::new();
+        analyser.start(self)
     }
 }
 
-/// Fills the global function symbol table.
-/// Also performs function declaration-related semantic checks.
-fn fill_func_table(tree: &Ast) -> Result<SymTable<FuncEntry>, SemError> {
-    let head = tree.get_head_ref();
-    match head {
-        AstNode::Block(prog) => {
-            let mut func_table: SymTable<FuncEntry> = SymTable::new(0);
-            let vec = prog.get_elems_ref();
-            for func in vec.iter().filter_map(|node| {
+/// State object for semantic analysis.
+struct SemanticAnalyser {
+    errors: Vec<SemError>,
+    functions: FuncTable,
+    scoped_vars: ScopedSymTable,
+    curr_func: Option<FunctionNode>,
+    expr_types: HashMap<*const AstNode, Type>,
+}
+
+impl SemanticAnalyser {
+    fn new() -> Self {
+        Self {
+            errors: Vec::new(),
+            functions: SymTable::new(0),
+            scoped_vars: ScopedSymTable::new(),
+            curr_func: None,
+            expr_types: HashMap::new(),
+        }
+    }
+
+    /// Starts the semantic analysis process on the given AST.
+    fn start(&mut self, ast: &Ast) -> Result<(), Vec<SemError>> {
+        let result = self.visit_program(ast.get_head_ref());
+        if let Err(err) = result {
+            self.errors.push(err);
+        }
+
+        if self.errors.is_empty() {
+            Ok(())
+        } else {
+            Err(Default::default())
+        }
+    }
+
+    fn add_err(&mut self, err: SemError) {
+        self.errors.push(err);
+    }
+
+    fn visit_program(&mut self, node: &AstNode) -> Result<(), SemError> {
+        match node {
+            AstNode::Block(program) => {
+                self.build_func_table(program)?;
+                // todo: second pass for variable/function analysis
+                Ok(())
+            }
+            _ => Err(SemError::InternalError(
+                // fatal error, should not happen
+                "Expected a program block node".to_string(),
+            )),
+        }
+    }
+
+    fn build_func_table(&mut self, program: &BlockNode) -> Result<(), SemError> {
+        program
+            .get_elems_ref()
+            .iter()
+            .filter_map(|node| {
+                // filter out non-function nodes
                 if let AstNode::Function(func) = node {
                     Some(func)
                 } else {
                     None
                 }
-            }) {
-                if func_table.contains(&func.name) {
-                    return Err(SemError::RedefFunction(func.name.clone()));
+            })
+            .for_each(|func| {
+                // check for redefinitions
+                if let Some(entry) = self.functions.lookup_mut(&func.name) {
+                    entry.mark();
+                    self.add_err(SemError::RedefFunction(format!(
+                        "Function '{}' is already defined",
+                        func.name
+                    )));
                 } else {
-                    let entry = FuncEntry::new(func.return_type.clone(), &func.params);
-                    func_table.insert(func.name.clone(), entry);
+                    self.functions.insert(
+                        func.name.clone(),
+                        FuncEntry::new(func.params.clone(), func.return_type.clone()),
+                    );
                 }
-            }
-            Ok(func_table)
-        }
-        _ => Err(SemError::InternalError(
-            "Mismatched abstract syntax tree head node type".to_string(),
-        )),
+            });
+        Ok(())
     }
 }
