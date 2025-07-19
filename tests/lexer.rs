@@ -6,16 +6,14 @@ fn verify_tokens(source: String, expected_tokens: Vec<&str>, test_name: &str) {
     let tokens = TokenStream::new(source);
     assert!(
         tokens.is_ok(),
-        "Lexical analysis failed for test: {}",
-        test_name
+        "Lexical analysis failed for test: {test_name}"
     );
     let tokens = tokens.unwrap().to_string();
     let actual_tokens = tokens.lines().collect::<Vec<_>>();
 
     assert_eq!(
         actual_tokens, expected_tokens,
-        "Test: {}\nDifference in tokens\nExpected:\n{:#?}\nActual:\n{:#?}",
-        test_name, expected_tokens, actual_tokens
+        "Test: {test_name}\nDifference in tokens\nExpected:\n{expected_tokens:#?}\nActual:\n{actual_tokens:#?}",
     );
 }
 
@@ -72,12 +70,12 @@ fn test_control_loops() {
 
     let source_path = "tests/files/max_i32.ax";
     let source = fs::read_to_string(source_path);
-    assert!(source.is_ok(), "Failed to read file: {}", source_path);
+    assert!(source.is_ok(), "Failed to read file: {source_path}");
     let source = source.unwrap();
 
     let expected_path = "tests/expected/lexer/max_i32.txt";
     let expected = fs::read_to_string(expected_path);
-    assert!(expected.is_ok(), "Failed to read file: {}", expected_path);
+    assert!(expected.is_ok(), "Failed to read file: {expected_path}");
     let expected = expected.unwrap();
     let expected_tokens = expected.lines().collect::<Vec<_>>();
 

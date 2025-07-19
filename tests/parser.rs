@@ -35,8 +35,7 @@ fn check_correct_parsing(input_path: &str, expected_path: &str, test_name: &str)
 
     assert_eq!(
         actual_lines, expected_lines,
-        "Test: {}\nDifference in parse tree\nExpected:\n{:#?}\nActual:\n{:#?}",
-        test_name, expected_lines, actual_lines
+        "Test: {test_name}\nDifference in parse tree\nExpected:\n{expected_lines:#?}\nActual:\n{actual_lines:#?}",
     );
 }
 
