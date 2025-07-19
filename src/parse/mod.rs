@@ -69,21 +69,21 @@ impl Parser {
         Ok(ParseNode::Scope(ScopeNode::new(vec)))
     }
 
-    fn check_starting_bracket(&mut self, stmt_type: &str) -> Result<(), ParserError> {
+    fn expect_lbrace(&mut self, stmt_type: &str) -> Result<(), ParserError> {
         match self.consume().typ {
             TokenType::GroupBegin('{') => Ok(()),
             _ => Err(ParserError::unexpected_token_stmt("{", stmt_type)),
         }
     }
 
-    fn check_ending_bracket(&mut self, stmt_type: &str) -> Result<(), ParserError> {
+    fn expect_rbrace(&mut self, stmt_type: &str) -> Result<(), ParserError> {
         match self.consume().typ {
             TokenType::GroupEnd('}') => Ok(()),
             _ => Err(ParserError::unexpected_token_stmt("}", stmt_type)),
         }
     }
 
-    fn check_char(&mut self, expected: char) -> Result<(), ParserError> {
+    fn expect_char(&mut self, expected: char) -> Result<(), ParserError> {
         match self.consume().get_char() {
             Some(c) if c == expected => Ok(()),
             _ => Err(ParserError::missing_token(&expected.to_string())),
@@ -123,7 +123,7 @@ impl ParseGroups for Parser {
                 },
                 TokenType::GroupEnd(_) => {
                     // should be closing bracket for scope
-                    self.check_ending_bracket("scope")?;
+                    self.expect_rbrace("scope")?;
                     break;
                 }
                 // others
@@ -175,7 +175,7 @@ impl ParseGroups for Parser {
         };
 
         // parameter list begin
-        self.check_char('{')?;
+        self.expect_char('{')?;
 
         let mut args: Vec<ParseNode> = Vec::new();
         while self.peek().get_char() != Some('}') {
@@ -187,7 +187,7 @@ impl ParseGroups for Parser {
         }
 
         // parameter list end
-        self.check_char('}')?;
+        self.expect_char('}')?;
 
         let ret_tok = self.consume();
         let ret = match ret_tok.typ {
@@ -198,7 +198,7 @@ impl ParseGroups for Parser {
         };
 
         // function body
-        self.check_starting_bracket("function")?;
+        self.expect_lbrace("function")?;
         let body = self.groups()?;
 
         Ok(ParseNode::Function(FunctionNode::new(id, ret, args, body)))
@@ -209,6 +209,7 @@ impl ParseGroups for Parser {
 trait ParseExpr {
     fn expr(&mut self, min_power: usize) -> Result<ParseNode, ParserError>;
     fn function_call(&mut self, value: &str) -> Result<ParseNode, ParserError>;
+    fn single_arg(&mut self) -> Result<Option<ParseNode>, ParserError>;
 }
 
 impl ParseExpr for Parser {
@@ -247,7 +248,7 @@ impl ParseExpr for Parser {
             TokenType::GroupBegin(val) => match val {
                 '(' => {
                     let lhs = self.expr(0)?;
-                    self.check_char(')')?;
+                    self.expect_char(')')?;
                     lhs
                 }
                 _ => return Err(ParserError::unexpected_token("(", &val.to_string())),
@@ -293,7 +294,7 @@ impl ParseExpr for Parser {
                         }
                         _ = self.consume(); // [
                         let index = self.expr(r_bp)?;
-                        self.check_char(']')?;
+                        self.expect_char(']')?;
 
                         lhs = ParseNode::Binary(BinaryNode::new("[]".to_string(), lhs, index));
                         continue;
@@ -331,29 +332,40 @@ impl ParseExpr for Parser {
 
     /// Parses a function call.
     fn function_call(&mut self, value: &str) -> Result<ParseNode, ParserError> {
-        _ = self.consume(); // (
-        let mut args = Vec::new();
+        self.expect_char('(')?; // double check for extra safety
 
-        // todo: make this more functional
-        // while typ == TokenType::GroupBegin && val == ')'
-        while match self.peek().typ {
-            TokenType::GroupBegin(val) => !matches!(val, ')'),
-            _ => true,
-        } {
-            args.push(self.expr(0)?);
-            if match self.peek().typ {
-                TokenType::Separator(sep) => matches!(sep, ','),
-                _ => false,
-            } {
-                self.consume();
-            }
+        let mut args = Vec::new();
+        while let Some(arg) = self.single_arg()? {
+            // parse arguments
+            args.push(arg);
         }
-        _ = self.consume(); // )
+
+        self.expect_char(')')?;
 
         Ok(ParseNode::FunctionCall(FunctionCallNode::new(
             ParseNode::Value(Value::new(value)),
             args,
         )))
+    }
+
+    fn single_arg(&mut self) -> Result<Option<ParseNode>, ParserError> {
+        if let TokenType::GroupEnd(')') = self.peek().typ {
+            return Ok(None);
+        }
+
+        let arg = self.expr(0)?;
+        match self.peek().typ {
+            TokenType::Separator(',') => {
+                // another argument follows
+                self.consume();
+                Ok(Some(arg))
+            }
+            TokenType::GroupEnd(')') => Ok(Some(arg)), // end of argument list
+            _ => Err(ParserError::unexpected_token(
+                "',' or ')'",
+                "function argument list",
+            )),
+        }
     }
 }
 
@@ -380,12 +392,12 @@ impl ParseStmt for Parser {
         let expr = match next.typ {
             TokenType::Separator(_sep) => {
                 // todo: check if this breaks
-                self.check_char(';')?;
+                self.expect_char(';')?;
                 None
             }
             _ => {
                 let result = Some(self.expr(0)?);
-                self.check_char(';')?;
+                self.expect_char(';')?;
                 result
             }
         };
@@ -413,7 +425,7 @@ impl ParseStmt for Parser {
         let result = if self.peek().get_char() == Some('[') {
             _ = self.consume(); // [
             let size = self.expr(0)?;
-            self.check_char(']')?;
+            self.expect_char(']')?;
 
             let id_tok = self.consume();
             let id = get_id(&id_tok)?;
@@ -443,7 +455,7 @@ impl ParseStmt for Parser {
         }?;
 
         if !function {
-            self.check_char(';')?;
+            self.expect_char(';')?;
         }
         Ok(result)
     }
@@ -485,11 +497,11 @@ impl ParseControl for Parser {
     }
 
     fn control_if(&mut self) -> Result<ParseNode, ParserError> {
-        self.check_starting_bracket("if")?;
+        self.expect_lbrace("if")?;
         let condition = self.expr(0)?;
-        self.check_ending_bracket("if")?;
+        self.expect_rbrace("if")?;
 
-        self.check_starting_bracket("if")?;
+        self.expect_lbrace("if")?;
         let then = self.groups()?;
 
         let mut node = ControlNode::new(condition, then);
@@ -498,9 +510,9 @@ impl ParseControl for Parser {
         while matches!(self.peek().typ, TokenType::Elif) {
             _ = self.consume(); // elif
 
-            self.check_starting_bracket("elif")?;
+            self.expect_lbrace("elif")?;
             let elif_condition = self.expr(0)?;
-            self.check_ending_bracket("elif")?;
+            self.expect_rbrace("elif")?;
 
             let elif_then = self.groups()?;
             node.push_elif(elif_condition, elif_then);
@@ -510,9 +522,9 @@ impl ParseControl for Parser {
         if matches!(self.peek().typ, TokenType::Else) {
             _ = self.consume(); // else
 
-            self.check_starting_bracket("else")?;
+            self.expect_lbrace("else")?;
             let else_then = self.groups()?;
-            self.check_ending_bracket("else")?;
+            self.expect_rbrace("else")?;
 
             node.set_else(else_then);
         }
@@ -521,24 +533,24 @@ impl ParseControl for Parser {
     }
 
     fn control_for(&mut self) -> Result<ParseNode, ParserError> {
-        self.check_starting_bracket("for")?;
+        self.expect_lbrace("for")?;
 
         // pre-loop expression
         let pre = self.expr(0)?;
-        self.check_char(';')?;
+        self.expect_char(';')?;
 
         // loop condition
         let cond = self.expr(0)?;
-        self.check_char(';')?;
+        self.expect_char(';')?;
 
         // post-loop expression
         let post = self.expr(0)?;
-        self.check_ending_bracket("for")?;
+        self.expect_rbrace("for")?;
 
         // then
-        self.check_starting_bracket("for")?;
+        self.expect_lbrace("for")?;
         let then = self.groups()?;
-        self.check_ending_bracket("for")?;
+        self.expect_rbrace("for")?;
 
         let node = ForNode::new(pre, cond, post, then);
         Ok(ParseNode::For(node))
@@ -546,14 +558,14 @@ impl ParseControl for Parser {
 
     fn control_while(&mut self) -> Result<ParseNode, ParserError> {
         // condition
-        self.check_starting_bracket("while")?;
+        self.expect_lbrace("while")?;
         let cond = self.expr(0)?;
-        self.check_ending_bracket("while")?;
+        self.expect_rbrace("while")?;
 
         // then
-        self.check_starting_bracket("while")?;
+        self.expect_lbrace("while")?;
         let then = self.groups()?;
-        self.check_ending_bracket("while")?;
+        self.expect_rbrace("while")?;
 
         // construct and return
         let node = WhileNode::new(cond, then);
