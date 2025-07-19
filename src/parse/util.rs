@@ -7,56 +7,56 @@ use crate::parse::{ConstantNode, ParseTree};
 /// Contains detailed information about parsing failures.
 pub struct ParserError {
     message: String,
-    kind: ErrorKind,
+    kind: ParserErrorKind,
 }
 
 impl ParserError {
     pub fn syntax_error(msg: &str) -> Self {
         Self {
             message: msg.to_string(),
-            kind: ErrorKind::SyntaxError,
+            kind: ParserErrorKind::SyntaxError,
         }
     }
 
     pub fn unexpected_token(expected: &str, found: &str) -> Self {
         Self {
             message: format!("Expected {expected}, but found {found}"),
-            kind: ErrorKind::UnexpectedToken,
+            kind: ParserErrorKind::UnexpectedToken,
         }
     }
 
     pub fn unexpected_token_stmt(expected: &str, stmt: &str) -> Self {
         Self {
             message: format!("Expected {expected} for {stmt} statement"),
-            kind: ErrorKind::UnexpectedToken,
+            kind: ParserErrorKind::UnexpectedToken,
         }
     }
 
     pub fn missing_token(token: &str) -> Self {
         Self {
             message: format!("Expected {token}, but not found"),
-            kind: ErrorKind::MissingToken,
+            kind: ParserErrorKind::MissingToken,
         }
     }
 
     pub fn invalid_expression(msg: &str) -> Self {
         Self {
             message: msg.to_string(),
-            kind: ErrorKind::InvalidExpression,
+            kind: ParserErrorKind::InvalidExpression,
         }
     }
 
     pub fn illegal_statement(msg: &str) -> Self {
         Self {
             message: msg.to_string(),
-            kind: ErrorKind::IllegalStatement,
+            kind: ParserErrorKind::IllegalStatement,
         }
     }
 
     pub fn internal_error(msg: &str) -> Self {
         Self {
             message: msg.to_string(),
-            kind: ErrorKind::InternalError,
+            kind: ParserErrorKind::InternalError,
         }
     }
 }
@@ -80,7 +80,7 @@ impl std::error::Error for ParserError {}
 
 /// Categorization of parser errors for better error handling
 #[derive(Debug)]
-pub enum ErrorKind {
+pub enum ParserErrorKind {
     SyntaxError,
     UnexpectedToken,
     MissingToken,
@@ -89,15 +89,15 @@ pub enum ErrorKind {
     InternalError,
 }
 
-impl Display for ErrorKind {
+impl Display for ParserErrorKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            ErrorKind::SyntaxError => write!(f, "SyntaxError"),
-            ErrorKind::UnexpectedToken => write!(f, "UnexpectedToken"),
-            ErrorKind::MissingToken => write!(f, "MissingToken"),
-            ErrorKind::InvalidExpression => write!(f, "InvalidExpression"),
-            ErrorKind::IllegalStatement => write!(f, "IllegalStatement"),
-            ErrorKind::InternalError => write!(f, "InternalError"),
+            ParserErrorKind::SyntaxError => write!(f, "SyntaxError"),
+            ParserErrorKind::UnexpectedToken => write!(f, "UnexpectedToken"),
+            ParserErrorKind::MissingToken => write!(f, "MissingToken"),
+            ParserErrorKind::InvalidExpression => write!(f, "InvalidExpression"),
+            ParserErrorKind::IllegalStatement => write!(f, "IllegalStatement"),
+            ParserErrorKind::InternalError => write!(f, "InternalError"),
         }
     }
 }
