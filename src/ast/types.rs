@@ -1,3 +1,10 @@
+pub trait Operator {
+    fn from_token(token: &str) -> Option<Self>
+    where
+        Self: Sized;
+    fn from_enum(op: &Self) -> &'static str;
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum BinaryOperator {
     // Arithmetic
@@ -30,8 +37,8 @@ pub enum BinaryOperator {
     Array,
 }
 
-impl BinaryOperator {
-    pub fn from_token(token: &str) -> Option<Self> {
+impl Operator for BinaryOperator {
+    fn from_token(token: &str) -> Option<Self> {
         match token {
             "+" => Some(Self::Add),
             "-" => Some(Self::Sub),
@@ -56,7 +63,7 @@ impl BinaryOperator {
         }
     }
 
-    pub fn from_enum(op: &BinaryOperator) -> &'static str {
+    fn from_enum(op: &BinaryOperator) -> &'static str {
         match op {
             BinaryOperator::Add => "+",
             BinaryOperator::Sub => "-",
@@ -88,8 +95,8 @@ pub enum UnaryOperator {
     Not,    // !
 }
 
-impl UnaryOperator {
-    pub fn from_token(token: &str) -> Option<Self> {
+impl Operator for UnaryOperator {
+    fn from_token(token: &str) -> Option<Self> {
         match token {
             "-" => Some(Self::Neg),
             "~" => Some(Self::BitNot),
@@ -98,7 +105,7 @@ impl UnaryOperator {
         }
     }
 
-    pub fn from_enum(op: &UnaryOperator) -> &'static str {
+    fn from_enum(op: &UnaryOperator) -> &'static str {
         match op {
             UnaryOperator::Neg => "-",
             UnaryOperator::BitNot => "~",
