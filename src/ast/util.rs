@@ -1,6 +1,8 @@
 use std::fmt::{Debug, Display, Formatter};
 
-use crate::ast::types::{AstNode, BinaryOperator, Literal, StorageClass, Type, UnaryOperator};
+use crate::ast::types::{
+    AstNode, BinaryOperator, Literal, Operator, StorageClass, Type, UnaryOperator,
+};
 use crate::ast::Ast;
 
 pub struct AstError {
