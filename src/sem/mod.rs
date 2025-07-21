@@ -20,7 +20,7 @@ struct SemanticAnalyser {
     errors: Vec<SemError>,
     functions: FuncTable,
     scoped_vars: ScopedSymTable,
-    curr_func: Option<FunctionNode>,
+    curr_func: Option<FunctionNode>, // todo: should this be a reference?
     expr_types: HashMap<*const AstNode, Type>,
 }
 
@@ -60,13 +60,11 @@ impl SemanticAnalyser {
                 // todo: second pass for variable/function analysis
                 Ok(())
             }
-            _ => Err(SemError::InternalError(
-                // fatal error, should not happen
-                "Expected a program block node".to_string(),
-            )),
+            _ => Err(SemError::internal_error("expected AST BlockNode")), // fatal error
         }
     }
 
+    /// This is a single pass over the program's block node to build the function table.
     fn build_func_table(&mut self, program: &BlockNode) -> Result<(), SemError> {
         program
             .get_elems_ref()
@@ -83,10 +81,7 @@ impl SemanticAnalyser {
                 // check for redefinitions
                 if let Some(entry) = self.functions.lookup_mut(&func.name) {
                     entry.mark();
-                    self.add_err(SemError::RedefFunction(format!(
-                        "Function '{}' is already defined",
-                        func.name
-                    )));
+                    self.add_err(SemError::id_redefined(func.name.clone()));
                 } else {
                     self.functions.insert(
                         func.name.clone(),

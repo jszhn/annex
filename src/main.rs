@@ -74,7 +74,14 @@ fn compile(args: Vec<String>) {
     match sem_result {
         Ok(_) => {}
         Err(e) => {
-            error!("The compiler has encountered an error while performing semantic analysis...\n\t{e}");
+            error!(
+                "The compiler has encountered {} error(s) while performing semantic analysis...\n",
+                e.len()
+            );
+            for err in e {
+                error!("\n{err}");
+            }
+
             exit(1);
         }
     }
