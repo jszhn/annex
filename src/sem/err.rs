@@ -49,9 +49,13 @@ impl SemError {
         )
     }
 
-    pub fn invalid_operands<T: Operator>(op: &T, left: Type, right: Option<Type>) -> Self {
+    pub fn invalid_operands<O: Operator + std::string::ToString>(
+        op: &O,
+        left: Type,
+        right: Option<Type>,
+    ) -> Self {
         let right_str = if let Some(right_typ) = right {
-            format!(" and {}", Type::from_enum(&right_typ))
+            format!(" and {right_typ}")
         } else {
             String::new()
         };
@@ -60,8 +64,8 @@ impl SemError {
             SemErrorKind::InvalidOperands,
             format!(
                 "{} cannot operate on types {}{}",
-                Operator::from_enum(op),
-                Type::from_enum(&left),
+                op.to_string(),
+                left,
                 right_str
             ),
             None,
@@ -71,11 +75,7 @@ impl SemError {
     pub fn invalid_assignment(left_typ: Type, right_typ: Type) -> Self {
         Self::new(
             SemErrorKind::InvalidAssignment,
-            format!(
-                "cannot assign type {} to type {}",
-                Type::from_enum(&right_typ),
-                Type::from_enum(&left_typ)
-            ),
+            format!("cannot assign type {right_typ} to type {left_typ}"),
             None,
         )
     }
@@ -83,7 +83,7 @@ impl SemError {
     pub fn invalid_condition(typ: Type) -> Self {
         Self::new(
             SemErrorKind::InvalidCondition,
-            format!("expected boolean type but found {}", Type::from_enum(&typ)),
+            format!("expected boolean type but found {typ}"),
             None,
         )
     }

@@ -1,8 +1,6 @@
 use std::fmt::{Debug, Display, Formatter};
 
-use crate::ast::types::{
-    AstNode, BinaryOperator, Literal, Operator, StorageClass, Type, UnaryOperator,
-};
+use crate::ast::types::{AstNode, Literal};
 use crate::ast::Ast;
 
 pub struct AstError {
@@ -33,16 +31,9 @@ impl Display for AstError {
 
 impl std::error::Error for AstError {}
 
-/*
-   print utilities
-*/
-impl Ast {
-    pub fn print(&self, stdout: bool) -> String {
-        let result = self.head.print();
-        if stdout {
-            print!("{}", &result);
-        }
-        result
+impl Display for Ast {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.head.print())
     }
 }
 
@@ -59,22 +50,13 @@ impl AstNode {
             AstNode::Parameter(_) => unreachable!(),
             AstNode::Function(node) => {
                 output.push_str(&format!("{indent_str}Function: {}\n", node.name));
-                output.push_str(&format!(
-                    "{indent_str}Return type: {}\n",
-                    Type::from_enum(&node.return_type)
-                ));
+                output.push_str(&format!("{indent_str}Return type: {}\n", node.return_type));
                 output.push_str(&format!("{indent_str}Parameters:\n"));
                 for param in &node.params {
                     output.push_str(&format!("{indent_str}  Parameter:\n"));
                     output.push_str(&format!("{indent_str}    Name: {}\n", param.name));
-                    output.push_str(&format!(
-                        "{indent_str}    Type: {}\n",
-                        Type::from_enum(&param.typ)
-                    ));
-                    output.push_str(&format!(
-                        "{indent_str}    Storage: {}\n",
-                        StorageClass::from_enum(&param.spec)
-                    ));
+                    output.push_str(&format!("{indent_str}    Type: {}\n", &param.typ));
+                    output.push_str(&format!("{indent_str}    Storage: {}\n", param.spec));
 
                     if let Some(size) = &param.size {
                         output.push_str(&format!("{indent_str}    Size:\n"));
@@ -95,10 +77,7 @@ impl AstNode {
             }
             AstNode::Binary(node) => {
                 output.push_str(&format!("{indent_str}Binary Operation:\n"));
-                output.push_str(&format!(
-                    "{indent_str}Operator: {}\n",
-                    BinaryOperator::from_enum(&node.op)
-                ));
+                output.push_str(&format!("{indent_str}Operator: {}\n", node.op));
                 output.push_str(&format!("{indent_str}Left:\n"));
                 output.push_str(&node.left.print_with_indent(indent + 1));
                 output.push_str(&format!("{indent_str}Right:\n"));
@@ -106,10 +85,7 @@ impl AstNode {
             }
             AstNode::Unary(node) => {
                 output.push_str(&format!("{indent_str}Unary Operation:\n"));
-                output.push_str(&format!(
-                    "{indent_str}Operator: {}\n",
-                    UnaryOperator::from_enum(&node.op)
-                ));
+                output.push_str(&format!("{indent_str}Operator: {}\n", node.op));
                 output.push_str(&format!("{indent_str}Operand:\n"));
                 output.push_str(&node.expr.print_with_indent(indent + 1));
             }
@@ -176,14 +152,8 @@ impl AstNode {
             AstNode::VarDecl(node) => {
                 output.push_str(&format!("{indent_str}Scalar Declaration:\n"));
                 let inner_indent = format!("{indent_str}  ");
-                output.push_str(&format!(
-                    "{inner_indent}Specifier: {}\n",
-                    StorageClass::from_enum(&node.storage)
-                ));
-                output.push_str(&format!(
-                    "{inner_indent}Type: {}\n",
-                    Type::from_enum(&node.typ)
-                ));
+                output.push_str(&format!("{inner_indent}Specifier: {}\n", node.storage));
+                output.push_str(&format!("{inner_indent}Type: {}\n", node.typ));
                 output.push_str(&format!("{inner_indent}Identifier: {}\n", node.name));
                 if let Some(init) = &node.initialiser {
                     output.push_str(&format!("{inner_indent}Initializer:\n"));
@@ -193,14 +163,8 @@ impl AstNode {
             AstNode::ArrDecl(node) => {
                 output.push_str(&format!("{indent_str}Array Declaration:\n"));
                 let inner_indent = format!("{indent_str}  ");
-                output.push_str(&format!(
-                    "{inner_indent}Specifier: {}\n",
-                    StorageClass::from_enum(&node.storage)
-                ));
-                output.push_str(&format!(
-                    "{inner_indent}Type: {}\n",
-                    Type::from_enum(&node.typ)
-                ));
+                output.push_str(&format!("{inner_indent}Specifier: {}\n", node.storage));
+                output.push_str(&format!("{inner_indent}Type: {}\n", node.typ));
                 output.push_str(&format!("{inner_indent}Size:\n"));
                 output.push_str(&node.size.print_with_indent(indent + 2));
                 output.push_str(&format!("{inner_indent}Identifier: {}\n", node.name));

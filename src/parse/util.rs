@@ -102,13 +102,9 @@ impl Display for ParserErrorKind {
     }
 }
 
-impl ParseTree {
-    pub fn print(&self, stdout: bool) -> String {
-        let result = self.head.print();
-        if stdout {
-            print!("{}", &result);
-        }
-        result
+impl Display for ParseTree {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.head.print())
     }
 }
 
