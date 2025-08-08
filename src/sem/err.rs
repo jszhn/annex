@@ -1,6 +1,7 @@
 use std::fmt::{Debug, Display, Formatter};
 
-use crate::ast::types::{Operator, Type};
+use crate::ast::oper::Operator;
+use crate::ast::types::Type;
 
 pub struct SemError {
     kind: SemErrorKind,
