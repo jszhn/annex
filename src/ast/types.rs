@@ -1,111 +1,4 @@
-#[derive(Debug, Clone, PartialEq)]
-pub enum BinaryOperator {
-    // Arithmetic
-    Add,
-    Sub,
-    Mul,
-    Div,
-
-    // Bitwise
-    BitAnd,
-    BitOr,
-    BitXor,
-    ShiftLeft,
-    ShiftRight,
-
-    // Logical
-    And,
-    Or,
-
-    // Comparison
-    Eq,
-    NotEq,
-    Greater,
-    Less,
-    GreaterEq,
-    LessEq,
-
-    // Miscellaneous
-    Assign,
-    Array,
-}
-
-impl BinaryOperator {
-    pub fn from_token(token: &str) -> Option<Self> {
-        match token {
-            "+" => Some(Self::Add),
-            "-" => Some(Self::Sub),
-            "*" => Some(Self::Mul),
-            "/" => Some(Self::Div),
-            "&" => Some(Self::BitAnd),
-            "|" => Some(Self::BitOr),
-            "^" => Some(Self::BitXor),
-            "<<" => Some(Self::ShiftLeft),
-            ">>" => Some(Self::ShiftRight),
-            "and" => Some(Self::And),
-            "or" => Some(Self::Or),
-            "=" => Some(Self::Assign),
-            "==" => Some(Self::Eq),
-            "!=" => Some(Self::NotEq),
-            ">" => Some(Self::Greater),
-            "<" => Some(Self::Less),
-            ">=" => Some(Self::GreaterEq),
-            "<=" => Some(Self::LessEq),
-            "[]" => Some(Self::Array),
-            _ => None,
-        }
-    }
-
-    pub fn from_enum(op: &BinaryOperator) -> &'static str {
-        match op {
-            BinaryOperator::Add => "+",
-            BinaryOperator::Sub => "-",
-            BinaryOperator::Mul => "*",
-            BinaryOperator::Div => "/",
-            BinaryOperator::BitAnd => "&",
-            BinaryOperator::BitOr => "|",
-            BinaryOperator::BitXor => "^",
-            BinaryOperator::ShiftLeft => "<<",
-            BinaryOperator::ShiftRight => ">>",
-            BinaryOperator::And => "and",
-            BinaryOperator::Or => "or",
-            BinaryOperator::Eq => "==",
-            BinaryOperator::NotEq => "!=",
-            BinaryOperator::Greater => ">",
-            BinaryOperator::Less => "<",
-            BinaryOperator::GreaterEq => ">=",
-            BinaryOperator::LessEq => "<=",
-            BinaryOperator::Assign => "=",
-            BinaryOperator::Array => "[]",
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum UnaryOperator {
-    Neg,    // -
-    BitNot, // ~
-    Not,    // !
-}
-
-impl UnaryOperator {
-    pub fn from_token(token: &str) -> Option<Self> {
-        match token {
-            "-" => Some(Self::Neg),
-            "~" => Some(Self::BitNot),
-            "?" => Some(Self::Not),
-            _ => None,
-        }
-    }
-
-    pub fn from_enum(op: &UnaryOperator) -> &'static str {
-        match op {
-            UnaryOperator::Neg => "-",
-            UnaryOperator::BitNot => "~",
-            UnaryOperator::Not => "?",
-        }
-    }
-}
+use super::oper::*;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Type {
@@ -142,23 +35,25 @@ impl Type {
             _ => None,
         }
     }
+}
 
-    pub fn from_enum(typ: &Type) -> String {
-        match typ {
-            Type::I8 => "i8".to_string(),
-            Type::I16 => "i16".to_string(),
-            Type::I32 => "i32".to_string(),
-            Type::I64 => "i64".to_string(),
-            Type::U8 => "u8".to_string(),
-            Type::U16 => "u16".to_string(),
-            Type::U32 => "u32".to_string(),
-            Type::U64 => "u64".to_string(),
-            Type::F32 => "f32".to_string(),
-            Type::F64 => "f64".to_string(),
-            Type::Bool => "bool".to_string(),
-            Type::Void => "void".to_string(),
+impl std::fmt::Display for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match self {
+            Type::I8 => write!(f, "i8"),
+            Type::I16 => write!(f, "i16"),
+            Type::I32 => write!(f, "i32"),
+            Type::I64 => write!(f, "i64"),
+            Type::U8 => write!(f, "u8"),
+            Type::U16 => write!(f, "u16"),
+            Type::U32 => write!(f, "u32"),
+            Type::U64 => write!(f, "u64"),
+            Type::F32 => write!(f, "f32"),
+            Type::F64 => write!(f, "f64"),
+            Type::Bool => write!(f, "bool"),
+            Type::Void => write!(f, "void"),
             Type::Array(typ_ptr, s) => {
-                format!("{}[{}]", Self::from_enum(typ_ptr), s)
+                write!(f, "{typ_ptr}[{s}]")
             }
         }
     }
@@ -180,12 +75,14 @@ impl StorageClass {
             _ => None,
         }
     }
+}
 
-    pub fn from_enum(sc: &StorageClass) -> &'static str {
-        match sc {
-            StorageClass::Const => "const",
-            StorageClass::Var => "var",
-            StorageClass::Vol => "vol",
+impl std::fmt::Display for StorageClass {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match self {
+            StorageClass::Const => write!(f, "const"),
+            StorageClass::Var => write!(f, "var"),
+            StorageClass::Vol => write!(f, "vol"),
         }
     }
 }

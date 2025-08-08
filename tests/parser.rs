@@ -23,7 +23,7 @@ fn check_correct_parsing(input_path: &str, expected_path: &str, test_name: &str)
     assert!(parse_tree.is_ok(), "Failed to parse input file");
     let parse_tree = parse_tree.unwrap();
 
-    let output = parse_tree.print(false);
+    let output = parse_tree.to_string();
     let actual_lines: Vec<&str> = output
         .lines()
         .filter(|line| !line.trim().is_empty())

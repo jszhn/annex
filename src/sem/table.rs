@@ -1,6 +1,36 @@
+use crate::ast::types::{ParamNode, Type};
 use std::collections::HashMap;
 
-use crate::ast::types::{ParamNode, Type};
+/// Symbol table type. Wraps around a hash table.
+pub struct SymTable<T> {
+    table: HashMap<String, T>,
+    pub scope: u32,
+}
+
+impl<T> SymTable<T> {
+    pub fn new(scope: u32) -> Self {
+        Self {
+            table: Default::default(),
+            scope,
+        }
+    }
+
+    pub fn contains(&self, key: &String) -> bool {
+        self.table.contains_key(key)
+    }
+
+    pub fn insert(&mut self, key: String, value: T) -> Option<T> {
+        self.table.insert(key, value)
+    }
+
+    pub fn lookup(&self, key: &String) -> Option<&T> {
+        self.table.get(key)
+    }
+
+    pub fn lookup_mut(&mut self, key: &String) -> Option<&mut T> {
+        self.table.get_mut(key)
+    }
+}
 
 /// FIFO stack-based symbol table implementation, for entering and exiting program scopes.
 pub struct ScopedSymTable {
@@ -39,7 +69,7 @@ impl ScopedSymTable {
 
     pub fn lookup(&self, key: &String) -> Option<&VarEntry> {
         for scope in self.scopes.iter().rev() {
-            if let Some(entry) = scope.get_ref(key) {
+            if let Some(entry) = scope.lookup(key) {
                 return Some(entry);
             }
         }
@@ -49,38 +79,10 @@ impl ScopedSymTable {
     /// Looks-up the given key in the current scope's symbol table.
     pub fn lookup_current(&self, key: &String) -> Option<&VarEntry> {
         let scope = self.scopes.last()?;
-        if let Some(entry) = scope.get_ref(key) {
+        if let Some(entry) = scope.lookup(key) {
             return Some(entry);
         }
         None
-    }
-}
-
-/// Symbol table struct type. Wraps around a hash table.
-pub struct SymTable<T> {
-    table: HashMap<String, T>,
-    pub scope_level: u32,
-}
-
-impl<T> SymTable<T> {
-    pub fn new(scope_level: u32) -> Self {
-        SymTable {
-            table: HashMap::new(),
-            scope_level,
-        }
-    }
-
-    pub fn get_ref(&self, key: &String) -> Option<&T> {
-        self.table.get(key)
-    }
-
-    pub fn contains(&self, key: &String) -> bool {
-        let result = self.table.get(key);
-        result.is_some()
-    }
-
-    pub fn insert(&mut self, key: String, value: T) -> Option<T> {
-        self.table.insert(key, value)
     }
 }
 
@@ -95,16 +97,28 @@ impl VarEntry {
     }
 }
 
-pub struct FuncEntry<'a> {
-    _return_type: Type,
-    _params: &'a Vec<ParamNode>,
+/// Symbol table type for functions.
+pub type FuncTable = SymTable<FuncEntry>;
+
+pub struct FuncEntry {
+    params: Vec<ParamNode>,
+    return_typ: Type,
+    /// This is an internal marker used to indicate that duplicate function definitions have
+    /// been found. We'll continue analysis but will only throw a fatal error if/when this
+    /// function is called.
+    marked: bool,
 }
 
-impl<'a> FuncEntry<'a> {
-    pub fn new(_return_type: Type, _params: &'a Vec<ParamNode>) -> FuncEntry<'a> {
+impl FuncEntry {
+    pub fn new(params: Vec<ParamNode>, return_typ: Type) -> FuncEntry {
         FuncEntry {
-            _return_type,
-            _params,
+            return_typ,
+            params,
+            marked: false,
         }
+    }
+
+    pub fn mark(&mut self) {
+        self.marked = true;
     }
 }
