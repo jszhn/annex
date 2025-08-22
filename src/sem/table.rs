@@ -67,6 +67,11 @@ impl ScopedSymTable {
         }
     }
 
+    pub fn insert(&mut self, key: String, value: VarEntry) -> Option<VarEntry> {
+        let scope = self.scopes.last_mut()?;
+        scope.insert(key, value)
+    }
+
     pub fn lookup(&self, key: &String) -> Option<&VarEntry> {
         for scope in self.scopes.iter().rev() {
             if let Some(entry) = scope.lookup(key) {
@@ -87,13 +92,13 @@ impl ScopedSymTable {
 }
 
 pub struct VarEntry {
-    _typ: Type,
-    _is_array: bool,
+    pub typ: Type,
+    pub is_array: bool,
 }
 
 impl VarEntry {
-    pub fn new(_typ: Type, _is_array: bool) -> VarEntry {
-        VarEntry { _typ, _is_array }
+    pub fn new(typ: Type, is_array: bool) -> VarEntry {
+        VarEntry { typ, is_array }
     }
 }
 
@@ -101,9 +106,9 @@ impl VarEntry {
 pub type FuncTable = SymTable<FuncEntry>;
 
 pub struct FuncEntry {
-    params: Vec<ParamNode>,
-    return_typ: Type,
-    /// This is an internal marker used to indicate that duplicate function definitions have
+    pub params: Vec<ParamNode>,
+    pub return_typ: Type,
+    /// todo: This will be an internal marker used to indicate that duplicate function definitions have
     /// been found. We'll continue analysis but will only throw a fatal error if/when this
     /// function is called.
     marked: bool,
@@ -120,5 +125,14 @@ impl FuncEntry {
 
     pub fn mark(&mut self) {
         self.marked = true;
+    }
+
+    pub fn compare_signature(&self, args: &[Option<Type>]) -> bool {
+        self.params.len() == args.len()
+            && self
+                .params
+                .iter()
+                .zip(args.iter())
+                .all(|(param, arg)| arg.as_ref().is_some_and(|t| param.typ == *t))
     }
 }
