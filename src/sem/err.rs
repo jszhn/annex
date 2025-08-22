@@ -42,7 +42,7 @@ impl SemError {
         )
     }
 
-    pub fn type_mismatch(expected: String, found: String) -> Self {
+    pub fn type_mismatch(expected: Type, found: Type) -> Self {
         Self::new(
             SemErrorKind::TypeMismatch,
             format!("expected {expected} but found {found}"),
@@ -73,6 +73,14 @@ impl SemError {
         )
     }
 
+    pub fn invalid_operands_typ() -> Self {
+        Self::new(
+            SemErrorKind::InvalidOperands,
+            "could not resolve types".to_string(),
+            None,
+        )
+    }
+
     pub fn invalid_assignment(left_typ: Type, right_typ: Type) -> Self {
         Self::new(
             SemErrorKind::InvalidAssignment,
@@ -89,7 +97,7 @@ impl SemError {
         )
     }
 
-    pub fn invalid_return_type(expected: String, found: String) -> Self {
+    pub fn invalid_return_type(expected: Type, found: Type) -> Self {
         Self::new(
             SemErrorKind::InvalidReturn,
             format!("expected {expected} but found {found}"),
@@ -97,7 +105,7 @@ impl SemError {
         )
     }
 
-    pub fn invalid_function_call(identifier: String, reason: &str) -> Self {
+    pub fn invalid_function_call(identifier: String, reason: String) -> Self {
         Self::new(
             SemErrorKind::InvalidCall,
             reason.to_string(),

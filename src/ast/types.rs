@@ -1,6 +1,6 @@
 use super::oper::*;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum Type {
     I8,
     I16,
@@ -13,6 +13,7 @@ pub enum Type {
     F32,
     F64,
     Bool,
+    #[default]
     Void,
     Array(Box<Type>, usize),
 }
@@ -34,6 +35,32 @@ impl Type {
             "void" => Some(Self::Void),
             _ => None,
         }
+    }
+
+    pub fn is_int(&self) -> bool {
+        matches!(
+            self,
+            Type::I8
+                | Type::I16
+                | Type::I32
+                | Type::I64
+                | Type::U8
+                | Type::U16
+                | Type::U32
+                | Type::U64
+        )
+    }
+
+    pub fn is_float(&self) -> bool {
+        matches!(self, Type::F32 | Type::F64)
+    }
+
+    pub fn is_bool(&self) -> bool {
+        matches!(self, Type::Bool)
+    }
+
+    pub fn is_numeric(&self) -> bool {
+        self.is_int() || self.is_float()
     }
 }
 
@@ -130,6 +157,7 @@ pub struct FunctionCallNode {
     pub return_type: Option<Type>,
 }
 
+/// Represents a parameter node in a function declaration.
 #[derive(Clone, PartialEq)]
 pub struct ParamNode {
     pub name: String,

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+// use std::collections::HashMap;
 
 use crate::ast::{types::*, Ast};
 use crate::sem::err::SemError;
@@ -6,6 +6,7 @@ use crate::sem::table::{FuncEntry, FuncTable, ScopedSymTable, SymTable};
 
 mod err;
 pub mod table;
+mod visitor;
 
 /// Contains semantic analysis methods for the AST.
 impl Ast {
@@ -21,7 +22,7 @@ struct SemanticAnalyser {
     functions: FuncTable,
     scoped_vars: ScopedSymTable,
     curr_func: Option<FunctionNode>, // todo: should this be a reference?
-    expr_types: HashMap<*const AstNode, Type>,
+                                     // expr_types: HashMap<*const AstNode, Type>, // currently unused
 }
 
 impl SemanticAnalyser {
@@ -31,7 +32,7 @@ impl SemanticAnalyser {
             functions: SymTable::new(0),
             scoped_vars: ScopedSymTable::new(),
             curr_func: None,
-            expr_types: HashMap::new(),
+            // expr_types: HashMap::new(),
         }
     }
 
@@ -57,7 +58,12 @@ impl SemanticAnalyser {
         match node {
             AstNode::Block(program) => {
                 self.build_func_table(program)?;
-                // todo: second pass for variable/function analysis
+
+                // second pass for variable/function analysis
+                for elem in program.get_elems_ref() {
+                    self.visit(elem)?;
+                }
+
                 Ok(())
             }
             _ => Err(SemError::internal_error("expected AST BlockNode")), // fatal error
