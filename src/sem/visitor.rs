@@ -316,7 +316,7 @@ impl SemanticAnalyser {
             // check if the type of the initializer matches the variable type
             let typ = self.visit(init);
             match typ {
-                Ok(Some(init_typ)) if self.types_compare(&node.typ, &init_typ) => {
+                Ok(Some(init_typ)) if !self.types_compare(&node.typ, &init_typ) => {
                     // LHS type should match RHS type
                     self.add_err(SemError::type_mismatch(node.typ.clone(), init_typ));
                 }
@@ -374,7 +374,7 @@ impl SemanticAnalyser {
         if let Some(init) = &arr.initialiser {
             let typ = self.visit(init);
             match typ {
-                Ok(Some(init_typ)) if self.types_compare(&arr.typ, &init_typ) => {
+                Ok(Some(init_typ)) if !self.types_compare(&arr.typ, &init_typ) => {
                     // LHS type should match RHS type
                     self.add_err(SemError::type_mismatch(arr.typ.clone(), init_typ));
                 }

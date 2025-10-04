@@ -34,11 +34,11 @@ impl SemError {
         )
     }
 
-    pub fn signature_mismatch(identifer: String) -> Self {
+    pub fn signature_mismatch(identifier: String) -> Self {
         Self::new(
             SemErrorKind::FunctionSignatureMismatch,
             "call to function does not meet definition".to_string(),
-            Some(identifer),
+            Some(identifier),
         )
     }
 
